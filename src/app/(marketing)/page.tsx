@@ -1,6 +1,9 @@
+"use client"; // Mark this file as a Client Component
+
 import { SignedIn, SignedOut } from '@clerk/nextjs';
 import { ArrowRightIcon } from 'lucide-react';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 
 import { BrandLogo } from '@/components/common/brand-logo';
 import { Button } from '@/components/ui/button';
@@ -29,7 +32,10 @@ export default function HomePage(): React.JSX.Element {
           </Link>
         </SignedIn>
         <SignedOut>
-          <Button className="text-lg p-6 rounded-xl flex gap-2">
+          <Button
+            onClick={() => redirect('/sign-in')} // Now it redirects correctly
+            className="text-lg p-6 rounded-xl flex gap-2"
+          >
             Get started now <ArrowRightIcon className="size-5" />
           </Button>
         </SignedOut>

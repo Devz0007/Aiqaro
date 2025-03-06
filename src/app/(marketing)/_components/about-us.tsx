@@ -40,11 +40,11 @@ const AboutUs = (): React.JSX.Element => {
           </div>
         </div>
         <div className="text-center mt-12">
-          <h3 className="text-2xl font-bold mb-4">Meet Our Founders</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div>
+          <h3 className="text-2xl font-bold mb-4">Meet Our Founder</h3>
+          <div >
+            <div className='text-center'>
               <h4 className="text-xl font-semibold">Devarshi Hazarika</h4>
-              <p>Co-Founder & CEO</p>
+              <p>Founder & CEO</p>
               <p>
                 With 18+ years of experience in strategic and data-driven
                 product management, Devarshi has led innovations at Fortune 50
@@ -53,16 +53,7 @@ const AboutUs = (): React.JSX.Element => {
                 research.
               </p>
             </div>
-            <div>
-              <h4 className="text-xl font-semibold">Arhan Choudhury</h4>
-              <p>Co-Founder & CTO</p>
-              <p>
-                Arhan, a Cornell University graduate with deep expertise in
-                blockchain and AI, leads our technology strategy. His innovative
-                solutions empower <strong>AIqaro</strong> to redefine clinical
-                research workflows.
-              </p>
-            </div>
+           
           </div>
         </div>
         <div className="text-center mt-12">
