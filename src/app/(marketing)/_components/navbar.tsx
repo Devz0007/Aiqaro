@@ -1,4 +1,9 @@
-import { SignedIn, SignedOut, SignInButton } from '@clerk/nextjs';
+import {
+  SignedIn,
+  SignedOut,
+  SignInButton,
+  SignOutButton,
+} from '@clerk/nextjs';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import Link from 'next/link';
 
@@ -37,6 +42,12 @@ export function NavBar(): React.JSX.Element {
             <Link className="text-lg" href="/dashboard/studies">
               Dashboard
             </Link>
+            {/* Sign Out Button for desktop */}
+            <SignOutButton>
+              <Button variant="ghost" className="text-lg h-auto py-0">
+                Log Out
+              </Button>
+            </SignOutButton>
           </SignedIn>
           <SignedOut>
             <SignInButton>
@@ -89,6 +100,12 @@ export function NavBar(): React.JSX.Element {
                   <Link className="text-lg" href="/dashboard/studies">
                     Dashboard
                   </Link>
+                  {/* Sign Out Button for mobile */}
+                  <SignOutButton>
+                    <Button variant="ghost" className="text-lg">
+                      Log Out
+                    </Button>
+                  </SignOutButton>
                 </SignedIn>
                 <SignedOut>
                   <SignInButton>
