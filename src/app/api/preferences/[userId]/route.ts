@@ -26,7 +26,7 @@ const UserIdSchema = z.string();
 
 // Updated route handler for GET
 export async function GET(
-  request: Request,
+  _request: Request, // Added underscore to indicate intentionally unused parameter
   context: {
     params: Promise<{
       userId: string;
