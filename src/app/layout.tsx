@@ -1,13 +1,18 @@
 // src/app/layout.tsx
-import Script from 'next/script';
-import type { Metadata } from 'next';
-import React from 'react';
-import BodyGTM from '@/components/body-gtm';
-import localFont from 'next/font/local';
-import { SpeedInsights } from "@vercel/speed-insights/next"
-import { APP_DESCRIPTION, APP_NAME } from '@/lib/constants/common';
+import type { Metadata } from 'next'; // <--- (1) First: next types
+import Script from 'next/script'; // <--- (2) Second: next/script
+import localFont from 'next/font/local'; // <--- (3) Then: next imports
+
+import React from 'react'; // <--- (4) Third: React
+
+import { SpeedInsights } from "@vercel/speed-insights/next" // <--- (5) Then: Other third-party libraries
+
+import BodyGTM from '@/components/body-gtm'; // <--- (6) Finally: Your own components
+import { APP_DESCRIPTION, APP_NAME } from '@/lib/constants/common'; // <--- (7) Internal libraries
 import { Providers } from '@/lib/providers';
-import './globals.css';
+
+import './globals.css'; // <--- (8) Import your css file last
+
 
 
 const geistSans = localFont({
