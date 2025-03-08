@@ -5,6 +5,7 @@ import type { Metadata } from 'next';
 import localFont from 'next/font/local';
 import Script from 'next/script';
 import React from 'react';
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 import BodyGTM from '@/components/body-gtm';
 import { APP_DESCRIPTION, APP_NAME } from '@/lib/constants/common';
