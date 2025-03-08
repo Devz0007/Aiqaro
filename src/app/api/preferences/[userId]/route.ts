@@ -33,7 +33,7 @@ export async function GET(
     }>;
   }
 ): Promise<Response> {
-  console.log('GET request received', request.body);
+
   try {
     const { userId } = await context.params; // Access params asynchronously
     const validatedUserId = UserIdSchema.parse(userId);
