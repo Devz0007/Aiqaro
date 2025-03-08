@@ -1,18 +1,11 @@
 // src/app/layout.tsx
-import './globals.css'; // <--- (1) Import your CSS file first
+import './globals.css';
 
-// ---- (2) next imports ------
 import type { Metadata } from 'next';
 import localFont from 'next/font/local';
 import Script from 'next/script';
-
-// ---- (3) react ------
 import React from 'react';
 
-//---- (4) Third party libraries -----
-import { SpeedInsights } from "@vercel/speed-insights/next";
-
-// ---- (5) Your Components and Libraries ------
 import BodyGTM from '@/components/body-gtm';
 import { APP_DESCRIPTION, APP_NAME } from '@/lib/constants/common';
 import { Providers } from '@/lib/providers';
@@ -38,11 +31,11 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>): React.JSX.Element {
-  const gtmId = 'GTM-TJDC7L6D'; // <--- (3) Define your GTM ID here
+  const gtmId = 'GTM-TJDC7L6D';
   return (
     <html lang="en">
       <head>
-        <Script // <--- (4) Add the Script component
+        <Script
           id="gtm-script"
           strategy="afterInteractive"
           dangerouslySetInnerHTML={{
@@ -53,11 +46,12 @@ export default function RootLayout({
             })(window,document,'script','dataLayer','${gtmId}');`,
           }}
         />
+        <SpeedInsights />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <BodyGTM gtmId={gtmId} /> {/* <--- (5) Add the BodyGTM component */}
+        <BodyGTM gtmId={gtmId} />
         <Providers>{children}</Providers>
       </body>
     </html>
