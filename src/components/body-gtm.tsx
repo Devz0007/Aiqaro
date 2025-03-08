@@ -1,11 +1,10 @@
 // src/components/body-gtm.tsx
 'use client';
-import Script from 'next/script';
 
 interface BodyGTMProps {
   gtmId: string;
 }
-const BodyGTM = ({ gtmId }: BodyGTMProps) => {
+const BodyGTM = ({ gtmId }: BodyGTMProps): React.JSX.Element => {
   return (
     <noscript>
       <iframe

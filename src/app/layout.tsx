@@ -1,13 +1,14 @@
 // src/app/layout.tsx
-import BodyGTM from '@/components/body-gtm'; // <--- (1) Import the BodyGTM component
+import Script from 'next/script';
 import type { Metadata } from 'next';
-import localFont from 'next/font/local';
-import './globals.css';
 import React from 'react';
-import Script from 'next/script'; // <--- (2) Import the Script component
-
+import BodyGTM from '@/components/body-gtm';
+import localFont from 'next/font/local';
+import { SpeedInsights } from "@vercel/speed-insights/next"
 import { APP_DESCRIPTION, APP_NAME } from '@/lib/constants/common';
 import { Providers } from '@/lib/providers';
+import './globals.css';
+
 
 const geistSans = localFont({
   src: './fonts/GeistVF.woff',
