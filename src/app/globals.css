@@ -82,3 +82,18 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Fix for preference modal scrolling */
+/* Target the DialogContent component */
+[data-state="open"] {
+  max-height: 90vh; /* Allow the dialog to take up to 90% of the viewport height */
+  overflow-y: auto; /* Enable vertical scrolling on the dialog */
+  overflow-x: hidden; /* Disable horizontal scrolling on the dialog */
+  height: auto; /*remove any fixed height on the dialog*/
+}
+.dialog-content {
+  max-height: 100%; /* Allow the content to use 100% of the dialog */
+  overflow-y: auto; /* Enable vertical scrolling if content exceeds max-height */
+  overflow-x: hidden; /* Disable horizontal scrolling */
+  height: auto; /*remove any fixed height on the dialog-content*/
+}
