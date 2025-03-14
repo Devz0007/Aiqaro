@@ -77,6 +77,14 @@ const AboutUs = (): React.JSX.Element => {
             </li>
           </ul>
         </div>
+        <div className="text-center mt-12">
+          <h3 className="text-2xl font-bold">Contact Us</h3>
+          <p className="text-lg">
+            If you have any questions or would like to learn more about
+            AIqaro, please reach out to us at{' '}
+            <a href="mailto:aiqarotech@gmail.com">aiqarotech@gmail.com</a>.
+          </p>
+        </div>
       </div>
     </section>
   );

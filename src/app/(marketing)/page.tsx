@@ -94,8 +94,8 @@ export default function HomePage(): React.JSX.Element {
           <FooterLinkGroup
             title="Company"
             links={[
-              { label: 'About Us', href: '#' },
-              { label: 'Contact', href: '#' },
+              { label: 'About Us', href: '/about-us' },
+              { label: 'Contact', href: '/about-us' },
             ]}
           />
         </div>
