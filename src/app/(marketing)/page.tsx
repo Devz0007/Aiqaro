@@ -2,6 +2,7 @@
 
 import { SignedIn, SignedOut } from '@clerk/nextjs';
 import { ArrowRightIcon } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
@@ -9,13 +10,11 @@ import { BrandLogo } from '@/components/common/brand-logo';
 import { Button } from '@/components/ui/button';
 
 import FooterLinkGroup from './_components/footer-link-group';
-import { ClerkIcon } from './_icons/clerk';
-import { NeonIcon } from './_icons/neon';
 
 export default function HomePage(): React.JSX.Element {
   return (
     <>
-      <section className="min-h-screen bg-[radial-gradient(hsl(210,72%,65%,40%),hsl(240,62%,73%,40%),hsl(var(--background))_60%)] flex items-center justify-center text-center text-balance flex-col gap-8 px-4">
+      <section className="min-h-screen pt-24 bg-[radial-gradient(hsl(210,72%,65%,40%),hsl(240,62%,73%,40%),hsl(var(--background))_60%)] flex items-center justify-center text-center text-balance flex-col gap-8 px-4">
         <h1 className="text-6xl lg:text-7xl xl:text-8xl font-bold tracking-tight m-4">
           Discover Clinical Trials Efficiently
         </h1>
@@ -40,25 +39,29 @@ export default function HomePage(): React.JSX.Element {
           </Button>
         </SignedOut>
       </section>
-      <section className="py-0">
+      <section className="py-8">
         <div className="container max-w-screen-xl mx-auto px-8">
           <h2 className="text-4xl text-center font-semibold mb-12">
             Your AIqaro Dashboard at a Glance
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="text-center h-[450px]">
-              <img
+              <Image
                 src="/DashboardScreen.png"
                 alt="AIqaro Dashboard Screenshot 1"
                 className="rounded-lg shadow-lg object-cover w-full h-full"
+                width={500}
+                height={450}
               />
             </div>
             <div className="text-center h-[450px]">
-              <img
+              <Image
                 src="/SavePrefScreen.png"
                 alt="AIqaro Dashboard Screenshot 2"
                 className="rounded-lg shadow-lg object-cover w-full h-full"
-            />
+                width={500}
+                height={450}
+              />
             </div>
           </div>
         </div>
@@ -86,7 +89,6 @@ export default function HomePage(): React.JSX.Element {
           </div>
         </div>
       </section>
-      {/* <Pricing /> */}
       <footer className="container pt-16 pb-8 flex flex-col sm:flex-row gap-8 sm:gap-4 justify-between items-start">
         <Link href="/">
           <BrandLogo />
@@ -103,7 +105,7 @@ export default function HomePage(): React.JSX.Element {
             title="Company"
             links={[
               { label: 'About Us', href: '/about-us' },
-              { label: 'Contact', href: '/about-us' },
+              { label: 'Contact', href: '#' },
             ]}
           />
         </div>
