@@ -36,7 +36,7 @@ export default function HomePage(): React.JSX.Element {
             onClick={() => redirect('/sign-in')} // Now it redirects correctly
             className="text-lg p-6 rounded-xl flex gap-2"
           >
-            Get started now <ArrowRightIcon className="size-5" />
+            Sign up for Free <ArrowRightIcon className="size-5" />
           </Button>
         </SignedOut>
       </section>
