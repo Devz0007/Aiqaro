@@ -40,18 +40,26 @@ export default function HomePage(): React.JSX.Element {
           </Button>
         </SignedOut>
       </section>
-      <section className="bg-primary text-primary-foreground">
-        <div className="container py-16 flex flex-col gap-16 px-8 md:px-16">
-          <h2 className="text-3xl text-center text-balance">
-            Trusted by Leading Organizations
+      <section className="py-0">
+        <div className="container max-w-screen-xl mx-auto px-8">
+          <h2 className="text-4xl text-center font-semibold mb-12">
+            Your AIqaro Dashboard at a Glance
           </h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-16">
-            <Link href="https://neon.tech">
-              <NeonIcon />
-            </Link>
-            <Link href="https://clerk.com">
-              <ClerkIcon />
-            </Link>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="text-center h-[450px]">
+              <img
+                src="/DashboardScreen.png"
+                alt="AIqaro Dashboard Screenshot 1"
+                className="rounded-lg shadow-lg object-cover w-full h-full"
+              />
+            </div>
+            <div className="text-center h-[450px]">
+              <img
+                src="/SavePrefScreen.png"
+                alt="AIqaro Dashboard Screenshot 2"
+                className="rounded-lg shadow-lg object-cover w-full h-full"
+            />
+            </div>
           </div>
         </div>
       </section>
@@ -87,8 +95,8 @@ export default function HomePage(): React.JSX.Element {
           <FooterLinkGroup
             title="Resources"
             links={[
-              { label: 'Help Center', href: '#' },
-              { label: 'API Documentation', href: '#' },
+              { label: 'Help Center', href: '/about-us' },
+              //{ label: 'API Documentation', href: '#' },
             ]}
           />
           <FooterLinkGroup
