@@ -20,7 +20,7 @@ import {
 
 export function NavBar(): React.JSX.Element {
   return (
-    <header className="fixed top-0 w-full z-10 bg-background/95 shadow-xl">
+    <div className="fixed top-0 w-full z-10 bg-background/95 shadow-xl">
       <nav className="flex items-center justify-between py-6 px-4 md:px-8 container">
         {/* Logo */}
         <Link href="/" className="flex-shrink-0">
@@ -29,7 +29,7 @@ export function NavBar(): React.JSX.Element {
 
         {/* Desktop Links */}
         <div className="hidden md:flex items-center gap-6 font-semibold">
-          <Link className="text-lg" href="#">
+          <Link className="text-lg" href="/#features">
             Features
           </Link>
           <Link className="text-lg" href="/#pricing">
@@ -87,7 +87,7 @@ export function NavBar(): React.JSX.Element {
                 </DrawerClose>
               </DrawerHeader>
               <div className="mt-6 flex flex-col gap-4 px-4 py-4 font-semibold">
-                <Link className="text-lg" href="#">
+                <Link className="text-lg" href="/#features">
                   Features
                 </Link>
                 <Link className="text-lg" href="/#pricing">
@@ -119,6 +119,6 @@ export function NavBar(): React.JSX.Element {
           </Drawer>
         </div>
       </nav>
-    </header>
+    </div>
   );
 }
