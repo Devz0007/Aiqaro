@@ -37,6 +37,7 @@ export default function HomePage(): React.JSX.Element {
           >
             Sign up for Free <ArrowRightIcon className="size-5" />
           </Button>
+            <p className="text-xs text-black -mt-6">No Credit Card Required</p>
         </SignedOut>
       </section>
       <section className="py-8">
