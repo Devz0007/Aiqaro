@@ -2,10 +2,6 @@ import { Webhook, WebhookRequiredHeaders } from 'svix';
 import { headers } from 'next/headers';
 import { WebhookEvent } from '@clerk/nextjs/server';
 
-type HeaderKeys = keyof WebhookRequiredHeaders;
-
-const webhookHeaders: HeaderKeys[] = ['svix-id', 'svix-timestamp', 'svix-signature'];
-
 export async function POST(req: Request): Promise<Response> {
   // You can find this in the Clerk Dashboard -> Webhooks -> choose the webhook
   const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET;
