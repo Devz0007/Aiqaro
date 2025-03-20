@@ -1,12 +1,12 @@
-import { headers } from 'next/headers';
 import { WebhookEvent } from '@clerk/nextjs/server';
+import { headers } from 'next/headers';
 import { Webhook } from 'svix';
 
 export async function POST(req: Request): Promise<Response> {
   // You can find this in the Clerk Dashboard -> Webhooks -> choose the webhook
   const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET;
 
-  if (!WEBHOOK_SECRET || WEBHOOK_SECRET.length === 0) {
+  if (WEBHOOK_SECRET === undefined || WEBHOOK_SECRET === '') {
     throw new Error(
       'Please add CLERK_WEBHOOK_SECRET from Clerk Dashboard to .env or .env.local',
     );
@@ -19,10 +19,20 @@ export async function POST(req: Request): Promise<Response> {
   const svix_signature = headerPayload.get('svix-signature');
 
   // If there are no headers, error out
-  if (!svix_id || svix_id.length === 0 || 
-      !svix_timestamp || svix_timestamp.length === 0 || 
-      !svix_signature || svix_signature.length === 0) {
-    return new Response('Error occured -- no svix headers', {
+  if (svix_id === null || svix_id === '') {
+    return new Response('Error occurred -- missing svix-id header', {
+      status: 400,
+    });
+  }
+  
+  if (svix_timestamp === null || svix_timestamp === '') {
+    return new Response('Error occurred -- missing svix-timestamp header', {
+      status: 400,
+    });
+  }
+  
+  if (svix_signature === null || svix_signature === '') {
+    return new Response('Error occurred -- missing svix-signature header', {
       status: 400,
     });
   }
@@ -38,14 +48,16 @@ export async function POST(req: Request): Promise<Response> {
 
   // Verify the payload with the headers
   try {
-    evt = wh.verify(body, {
+    const headerValues: Record<string, string> = {
       'svix-id': svix_id,
       'svix-timestamp': svix_timestamp,
       'svix-signature': svix_signature,
-    } as Record<string, string>) as WebhookEvent;
+    };
+    
+    evt = wh.verify(body, headerValues) as WebhookEvent;
   } catch (err) {
     console.error('Error verifying webhook:', err);
-    return new Response('Error occured', {
+    return new Response('Error occurred during verification', {
       status: 400,
     });
   }
@@ -53,11 +65,9 @@ export async function POST(req: Request): Promise<Response> {
   // Get the type
   const eventType = evt.type;
 
-  // console.log(`Webhook with type of ${eventType}`);
-  // console.log('Webhook body:', body);
-
   if (eventType === 'user.created') {
-    // console.log('User created:', evt.data);
+    // Handle user creation event
+    // Example: await createUser(evt.data);
   }
 
   return new Response('', { status: 201 });
