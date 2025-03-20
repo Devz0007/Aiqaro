@@ -14,9 +14,11 @@ export async function POST(req: Request): Promise<Response> {
 
   // Get the headers
   const headerPayload = headers();
-  const svix_id = headerPayload.get('svix-id');
-  const svix_timestamp = headerPayload.get('svix-timestamp');
-  const svix_signature = headerPayload.get('svix-signature');
+  
+  // Explicitly type these as string | null to satisfy TypeScript
+  const svix_id: string | null = headerPayload.get('svix-id');
+  const svix_timestamp: string | null = headerPayload.get('svix-timestamp');
+  const svix_signature: string | null = headerPayload.get('svix-signature');
 
   // If there are no headers, error out
   if (svix_id === null || svix_id === '') {
@@ -44,17 +46,17 @@ export async function POST(req: Request): Promise<Response> {
   // Create a new Svix instance with your secret.
   const wh = new Webhook(WEBHOOK_SECRET);
 
+  // Define event with proper typing
   let evt: WebhookEvent;
 
   // Verify the payload with the headers
   try {
-    const headerValues: Record<string, string> = {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    evt = wh.verify(body, {
       'svix-id': svix_id,
       'svix-timestamp': svix_timestamp,
       'svix-signature': svix_signature,
-    };
-    
-    evt = wh.verify(body, headerValues) as WebhookEvent;
+    }) as WebhookEvent;
   } catch (err) {
     console.error('Error verifying webhook:', err);
     return new Response('Error occurred during verification', {
@@ -62,12 +64,15 @@ export async function POST(req: Request): Promise<Response> {
     });
   }
 
-  // Get the type
+  // Get the event type
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
   const eventType = evt.type;
 
   if (eventType === 'user.created') {
-    // Handle user creation event
-    // Example: await createUser(evt.data);
+    // Handle user creation
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const userData = evt.data;
+    // Process userData...
   }
 
   return new Response('', { status: 201 });
