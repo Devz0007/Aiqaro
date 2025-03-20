@@ -1,5 +1,5 @@
-import { headers } from 'next/headers';
 import { WebhookEvent } from '@clerk/nextjs/server';
+import { headers } from 'next/headers';
 import { Webhook } from 'svix';
 
 export async function POST(req: Request): Promise<Response> {
@@ -26,23 +26,21 @@ export async function POST(req: Request): Promise<Response> {
 
   try {
     evt = wh.verify(body, {
-      'svix-id': svix_id!,
-      'svix-timestamp': svix_timestamp!,
-      'svix-signature': svix_signature!,
+      'svix-id': svix_id ?? '',
+      'svix-timestamp': svix_timestamp ?? '',
+      'svix-signature': svix_signature ?? '',
     }) as WebhookEvent;
   } catch (err) {
     console.error('Error verifying webhook:', err);
     return new Response('Error occurred', { status: 400 });
   }
 
-  if (!evt) {
-    return new Response('Error occurred', { status: 400 });
-  }
+  if (evt !== null) {
+    const eventType = evt.type;
 
-  const eventType = evt.type;
-
-  if (eventType === 'user.created') {
-    console.log('User created:', evt.data);
+    if (eventType === 'user.created') {
+      // Logging mechanism can be added here
+    }
   }
 
   return new Response('', { status: 201 });
