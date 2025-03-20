@@ -57,5 +57,6 @@ export async function POST(req: Request): Promise<Response> {
   if (eventType === 'user.created') {
     // console.log('User created:', evt.data);
   }
+
   return new Response('', { status: 201 });
 }
