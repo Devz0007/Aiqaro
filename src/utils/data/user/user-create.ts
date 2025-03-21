@@ -16,10 +16,16 @@ export const userCreate = async ({
   last_name,
   profile_image_url,
 }: UserCreateProps): Promise<void> => {
+  const userIdAsInt = parseInt(user_id, 10); // Convert to integer
+
+  if (isNaN(userIdAsInt)) {
+    throw new Error(`Invalid user_id: ${user_id}. Cannot convert to integer.`);
+  }
+
   try {
-    await prisma.user.create({ // <-- USE the imported client
+    await prisma.user.create({
       data: {
-        id: user_id,
+        id: userIdAsInt, // Use the converted integer
         email,
         firstName: first_name,
         lastName: last_name,

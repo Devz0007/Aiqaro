@@ -16,10 +16,16 @@ export const userUpdate = async ({
   last_name,
   profile_image_url,
 }: UserUpdateProps): Promise<void> => {
+  const userIdAsInt = parseInt(user_id, 10); // Convert to integer
+
+  if (isNaN(userIdAsInt)) {
+    throw new Error(`Invalid user_id: ${user_id}. Cannot convert to integer.`);
+  }
+
   try {
-    await prisma.user.update({ // <-- USE the imported client
+    await prisma.user.update({
       where: {
-        id: user_id,
+        id: userIdAsInt, // Use the converted integer
       },
       data: {
         email,
