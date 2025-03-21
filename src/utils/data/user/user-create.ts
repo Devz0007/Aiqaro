@@ -9,8 +9,15 @@ import { z } from 'zod';
 import { userCreateSchema, userUpdateProps } from '@/utils/types/user';
 import { env } from 'data/env/server';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type UserCreateResponse = PostgrestError[] | any[];
+interface User {
+  email: string;
+  first_name: string;
+  last_name: string;
+  profile_image_url: string;
+  user_id: string;
+}
+
+type UserCreateResponse = PostgrestError | User[] | null;
 
 export const userCreate = async ({
   email,
@@ -58,10 +65,10 @@ export const userCreate = async ({
       .select();
 
     if (error) {
-      return [error];
+      console.error('Error creating user:', error);
+      return error;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return data;
   } catch (error: unknown) {
     console.error('Error creating user:', error);

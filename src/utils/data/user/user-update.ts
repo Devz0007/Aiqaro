@@ -9,8 +9,15 @@ import { z } from 'zod';
 import { userUpdateSchema, userUpdateProps } from '@/utils/types/user';
 import { env } from 'data/env/server';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type UserUpdateResponse = PostgrestError[] | any[];
+interface User {
+  email: string;
+  first_name: string;
+  last_name: string;
+  profile_image_url: string;
+  user_id: string;
+}
+
+type UserUpdateResponse = PostgrestError | User[] | null;
 
 export const userUpdate = async ({
   email,
@@ -55,10 +62,10 @@ export const userUpdate = async ({
       .select();
 
     if (error) {
-      return [error];
+      console.error('Error updating user:', error);
+      return error;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return data;
   } catch (error: unknown) {
     console.error('Error updating user:', error);
