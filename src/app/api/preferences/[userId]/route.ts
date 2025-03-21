@@ -24,6 +24,7 @@ const UserPreferenceSchema = z.object({
 // Validate userId as a string
 const UserIdSchema = z.string().min(1, "User ID cannot be empty");
 
+
 // Updated route handler for GET
 export async function GET(
   _request: Request,
