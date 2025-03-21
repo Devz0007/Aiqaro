@@ -1,5 +1,3 @@
-UserCreate
-
 // src/utils/data/user/user-create.ts
 'server only';
 

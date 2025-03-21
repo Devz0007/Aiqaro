@@ -1,5 +1,3 @@
-User Update
-
 // src/utils/data/user/user-update.ts
 'server only';
 
