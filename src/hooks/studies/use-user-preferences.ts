@@ -3,7 +3,6 @@
 import {
   useMutation,
   useQuery,
-  useQueryClient,
   UseQueryResult,
   UseMutationResult,
 } from '@tanstack/react-query';
@@ -57,7 +56,7 @@ const saveUserPreferences = async ({ userId, preferences }: { userId: string; pr
     throw new Error(`Failed to save preferences: ${response.statusText}`);
   }
   
-  return response.json(); // Return the saved preferences
+  return await response.json() as Promise<Partial<SearchFilters>>; // Ensure the return type is correct
 };
 
 // React Query hook to save preferences
