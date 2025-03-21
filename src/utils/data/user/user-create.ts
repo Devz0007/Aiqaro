@@ -41,6 +41,17 @@ export const userCreate = async ({
             return cookieValue ?? undefined;
           },
         },
+        db: {
+          schema: 'public',
+        },
+        auth: {
+          persistSession: false, // Important for serverless environments
+        },
+        global: {
+          headers: {
+            'x-application-name': 'aiqaro',
+          },
+        },
       }
     );
     console.log('[USER_CREATE] Supabase client created successfully');
