@@ -70,8 +70,8 @@ export async function POST(
     const validatedUserId = UserIdSchema.parse(userId);
 
     // Get and log the request body
-    const body = await request.json();
-    const data = UserPreferenceSchema.parse(body);
+    const body: unknown = await request.json(); // Use unknown type initially
+    const data = UserPreferenceSchema.parse(body); // Validate and parse the body
 
     // Upsert preferences
     const preferences = await prisma.user_study_preferences.upsert({
