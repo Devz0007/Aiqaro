@@ -8,6 +8,15 @@ import { userCreate } from '@/utils/data/user/user-create';
 import { userUpdate } from '@/utils/data/user/user-update';
 import { env } from 'data/env/server';
 
+// Type-safe helper function to extract properties from unknown data
+function safeGetString(obj: unknown, key: string): string | undefined {
+  if (typeof obj === 'object' && obj !== null && key in obj) {
+    const value = (obj as Record<string, unknown>)[key];
+    return typeof value === 'string' ? value : undefined;
+  }
+  return undefined;
+}
+
 export async function POST(req: Request): Promise<Response> {
   console.log('[CLERK WEBHOOK] Request received');
   
@@ -51,12 +60,20 @@ export async function POST(req: Request): Promise<Response> {
       );
     }
     
-    // Get the body
-    const rawPayload = await req.json();
+    // Get the body and handle 'any' type safely
+    const rawPayload = await req.json() as Record<string, unknown>;
+    
+    // Type-safe access to nested properties
+    const payloadType = safeGetString(rawPayload, 'type');
+    let payloadDataId: string | undefined;
+    
+    if (typeof rawPayload.data === 'object' && rawPayload.data !== null) {
+      payloadDataId = safeGetString(rawPayload.data as Record<string, unknown>, 'id');
+    }
     
     console.log('[CLERK WEBHOOK] Raw payload received', { 
-      type: rawPayload?.type ? String(rawPayload.type) : undefined,
-      data_id: rawPayload?.data?.id ? String(rawPayload.data.id) : undefined
+      type: payloadType,
+      data_id: payloadDataId
     });
     
     const body = JSON.stringify(rawPayload);
