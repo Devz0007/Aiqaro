@@ -6,12 +6,12 @@ export const userCreateSchema = z.object({
   email: z.string().email({ message: 'Invalid email' }).describe('user email'),
   first_name: z
     .string()
-    .regex(/^[a-zA-Z]+$/, { message: 'First name must only contain letters' })
-    .min(1, { message: 'First name must be at least 1 character' })
+    .regex(/^[a-zA-Z]*$/, { message: 'First name must only contain letters' })
+    .optional()
     .describe('user first name'),
   last_name: z
     .string()
-    .regex(/^[a-zA-Z]+$/, { message: 'Last name must only contain letters' })
+    .regex(/^[a-zA-Z]*$/, { message: 'Last name must only contain letters' })
     .optional()
     .describe('user last name'),
   profile_image_url: z
@@ -32,12 +32,12 @@ export const userUpdateSchema = z.object({
     .describe('user email'),
   first_name: z
     .string()
-    .regex(/^[a-zA-Z]+$/, { message: 'First name must only contain letters' })
-    .min(1, { message: 'First name must be at least 1 character' })
+    .regex(/^[a-zA-Z]*$/, { message: 'First name must only contain letters' })
+    .optional()
     .describe('user first name'),
   last_name: z
     .string()
-    .regex(/^[a-zA-Z]+$/, { message: 'Last name must only contain letters' })
+    .regex(/^[a-zA-Z]*$/, { message: 'Last name must only contain letters' })
     .optional()
     .describe('user last name'),
   profile_image_url: z
