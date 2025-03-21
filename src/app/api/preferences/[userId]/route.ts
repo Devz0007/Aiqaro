@@ -24,7 +24,6 @@ const UserPreferenceSchema = z.object({
 // Validate userId as a string
 const UserIdSchema = z.string().min(1, "User ID cannot be empty");
 
-
 // Updated route handler for GET
 export async function GET(
   _request: Request,
@@ -36,19 +35,13 @@ export async function GET(
 ): Promise<Response> {
   try {
     const { userId } = await context.params;
-    console.log('GET - Received userId:', userId);
-
     const validatedUserId = UserIdSchema.parse(userId);
-    console.log('GET - Validated userId:', validatedUserId);
 
     const preferences = await prisma.user_study_preferences.findUnique({
       where: { userId: validatedUserId },
     });
-    
-    console.log('GET - Retrieved preferences:', preferences);
 
     if (!preferences) {
-      console.log('GET - No preferences found for user:', validatedUserId);
       return NextResponse.json(
         { error: 'Preferences not found' },
         { status: 404 }
@@ -56,12 +49,6 @@ export async function GET(
     }
     return NextResponse.json(preferences);
   } catch (error) {
-    console.error('Error in fetching preferences:', {
-      error: error instanceof Error ? error.message : error,
-      stack: error instanceof Error ? error.stack : undefined,
-      zodError: error instanceof z.ZodError ? error.errors : undefined
-    });
-    
     return NextResponse.json(
       { 
         error: error instanceof z.ZodError 
@@ -80,19 +67,11 @@ export async function POST(
 ): Promise<Response> {
   try {
     const { userId } = await context.params;
-    console.log('POST - Received userId:', userId);
-
-    // Validate userId
     const validatedUserId = UserIdSchema.parse(userId);
-    console.log('POST - Validated userId:', validatedUserId);
 
     // Get and log the request body
     const body = await request.json();
-    console.log('POST - Received body:', body);
-
-    // Safely parse and validate request body
     const data = UserPreferenceSchema.parse(body);
-    console.log('POST - Validated data:', data);
 
     // Upsert preferences
     const preferences = await prisma.user_study_preferences.upsert({
@@ -101,16 +80,8 @@ export async function POST(
       create: { userId: validatedUserId, ...data },
     });
 
-    console.log('POST - Saved preferences:', preferences);
-
     return NextResponse.json(preferences);
   } catch (error) {
-    console.error('Error in setting preferences:', {
-      error: error instanceof Error ? error.message : error,
-      stack: error instanceof Error ? error.stack : undefined,
-      zodError: error instanceof z.ZodError ? error.errors : undefined
-    });
-
     return NextResponse.json(
       { 
         error: error instanceof z.ZodError 
