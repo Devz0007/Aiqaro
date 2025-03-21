@@ -65,7 +65,7 @@ export const userUpdate = async ({
       console.error('Error updating user:', error);
       return error;
     }
-    if (data) {
+    if (data && data.length > 0) {
       return data as User[];
     }
     return null;

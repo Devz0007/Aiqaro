@@ -68,7 +68,7 @@ export const userCreate = async ({
       console.error('Error creating user:', error);
       return error;
     }
-    if (data) {
+    if (data && data.length > 0) {
       return data as User[];
     }
     return null;
