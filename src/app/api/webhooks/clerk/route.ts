@@ -34,15 +34,15 @@ export async function POST(req: Request): Promise<Response> {
     const svix_signature = headerPayload.get('svix-signature');
 
     console.log('[CLERK WEBHOOK] Headers received', { 
-      svix_id_present: !!svix_id,
-      svix_timestamp_present: !!svix_timestamp,
-      svix_signature_present: !!svix_signature 
+      svix_id_present: svix_id !== null && svix_id !== undefined && svix_id !== '',
+      svix_timestamp_present: svix_timestamp !== null && svix_timestamp !== undefined && svix_timestamp !== '',
+      svix_signature_present: svix_signature !== null && svix_signature !== undefined && svix_signature !== ''
     });
 
     if (
-      !svix_id ||
-      !svix_timestamp ||
-      !svix_signature
+      svix_id === null || svix_id === undefined || svix_id === '' ||
+      svix_timestamp === null || svix_timestamp === undefined || svix_timestamp === '' ||
+      svix_signature === null || svix_signature === undefined || svix_signature === ''
     ) {
       console.error('[CLERK WEBHOOK] Missing svix headers');
       return NextResponse.json(
@@ -52,11 +52,11 @@ export async function POST(req: Request): Promise<Response> {
     }
     
     // Get the body
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const rawPayload = await req.json();
+    
     console.log('[CLERK WEBHOOK] Raw payload received', { 
-      type: rawPayload?.type,
-      data_id: rawPayload?.data?.id
+      type: rawPayload?.type ? String(rawPayload.type) : undefined,
+      data_id: rawPayload?.data?.id ? String(rawPayload.data.id) : undefined
     });
     
     const body = JSON.stringify(rawPayload);
@@ -70,6 +70,7 @@ export async function POST(req: Request): Promise<Response> {
         'svix-timestamp': svix_timestamp,
         'svix-signature': svix_signature,
       }) as WebhookEvent;
+      
       console.log('[CLERK WEBHOOK] Verification successful');
       
       const eventType = evt.type;
@@ -86,8 +87,8 @@ export async function POST(req: Request): Promise<Response> {
         };
         
         console.log('[CLERK WEBHOOK] Environment variables check:', { 
-          supabase_url: env.SUPABASE_URL,
-          supabase_key_present: !!env.SUPABASE_SERVICE_KEY
+          supabase_url: env.SUPABASE_URL ?? '',
+          supabase_key_present: env.SUPABASE_SERVICE_KEY !== undefined && env.SUPABASE_SERVICE_KEY !== ''
         });
         
         try {
@@ -100,7 +101,7 @@ export async function POST(req: Request): Promise<Response> {
             { status: 200, headers: responseHeaders }
           );
         } catch (error: unknown) {
-          console.error('[CLERK WEBHOOK] Error in userCreate:', error instanceof Error ? error.message : error);
+          console.error('[CLERK WEBHOOK] Error in userCreate:', error instanceof Error ? error.message : String(error));
           return NextResponse.json(
             { error: 'Failed to create user', details: error instanceof Error ? error.message : 'Unknown error' },
             { status: 500, headers: responseHeaders }
@@ -126,7 +127,7 @@ export async function POST(req: Request): Promise<Response> {
             { status: 200, headers: responseHeaders }
           );
         } catch (error: unknown) {
-          console.error('[CLERK WEBHOOK] Error in userUpdate:', error instanceof Error ? error.message : error);
+          console.error('[CLERK WEBHOOK] Error in userUpdate:', error instanceof Error ? error.message : String(error));
           return NextResponse.json(
             { error: 'Failed to update user', details: error instanceof Error ? error.message : 'Unknown error' },
             { status: 500, headers: responseHeaders }
@@ -142,7 +143,7 @@ export async function POST(req: Request): Promise<Response> {
       }
     } catch (verificationError: unknown) {
       console.error('[CLERK WEBHOOK] Verification failed', { 
-        error: verificationError instanceof Error ? verificationError.message : verificationError
+        error: verificationError instanceof Error ? verificationError.message : String(verificationError)
       });
       return NextResponse.json(
         { error: 'Invalid webhook signature' },
@@ -150,7 +151,7 @@ export async function POST(req: Request): Promise<Response> {
       );
     }
   } catch (error: unknown) {
-    console.error('[CLERK WEBHOOK] Unexpected error:', error instanceof Error ? error.message : error);
+    console.error('[CLERK WEBHOOK] Unexpected error:', error instanceof Error ? error.message : String(error));
     return NextResponse.json(
       { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500, headers: responseHeaders }

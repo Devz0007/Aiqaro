@@ -22,15 +22,15 @@ export const userCreate = async ({
   console.log('[USER_CREATE] Starting user creation', { email, user_id });
   
   console.log('[USER_CREATE] Checking environment variables', {
-    supabase_url_present: !!env.SUPABASE_URL,
-    supabase_key_present: !!env.SUPABASE_SERVICE_KEY
+    supabase_url_present: env.SUPABASE_URL !== undefined && env.SUPABASE_URL !== '',
+    supabase_key_present: env.SUPABASE_SERVICE_KEY !== undefined && env.SUPABASE_SERVICE_KEY !== ''
   });
   
   const cookieStore = await cookies();
   console.log('[USER_CREATE] Got cookie store');
 
   try {
-    console.log('[USER_CREATE] Creating Supabase client with URL:', env.SUPABASE_URL);
+    console.log('[USER_CREATE] Creating Supabase client with URL:', env.SUPABASE_URL ?? '');
     const supabase = createServerClient(
       env.SUPABASE_URL,
       env.SUPABASE_SERVICE_KEY,
@@ -81,7 +81,7 @@ export const userCreate = async ({
       return data;
     } catch (error: unknown) {
       console.error('[USER_CREATE] Error during user creation', {
-        error: error instanceof Error ? error.message : error,
+        error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
         zodError: error instanceof z.ZodError ? error.errors : undefined
       });
@@ -95,7 +95,7 @@ export const userCreate = async ({
     }
   } catch (clientError: unknown) {
     console.error('[USER_CREATE] Error creating Supabase client', {
-      error: clientError instanceof Error ? clientError.message : clientError,
+      error: clientError instanceof Error ? clientError.message : String(clientError),
       stack: clientError instanceof Error ? clientError.stack : undefined
     });
     throw new Error('Failed to initialize Supabase client');

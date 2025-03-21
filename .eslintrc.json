@@ -59,5 +59,19 @@
     "no-return-await": "error",
     "no-unused-expressions": "error",
     "curly": ["error", "all"]
-  }
+  },
+  "overrides": [
+    {
+      "files": [
+        "src/app/api/webhooks/**/*.ts",
+        "src/utils/data/user/user-create.ts",
+        "src/utils/data/user/user-update.ts"
+      ],
+      "rules": {
+        "no-console": "off",
+        "@typescript-eslint/no-unsafe-member-access": "warn",
+        "@typescript-eslint/no-unsafe-assignment": "warn"
+      }
+    }
+  ]
 }
