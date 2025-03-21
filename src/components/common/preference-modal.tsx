@@ -12,6 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox'; // Import Checkbox componen
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -100,6 +101,9 @@ export default function PreferenceModal({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Set Your Preferences</DialogTitle>
+          <DialogDescription>
+            Choose your preferred study phases, statuses, and therapeutic areas. These preferences will be used to filter your study searches.
+          </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
