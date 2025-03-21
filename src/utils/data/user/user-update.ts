@@ -1,23 +1,17 @@
+User Update
+
 // src/utils/data/user/user-update.ts
 'server only';
 
 import { PostgrestError } from '@supabase/postgrest-js';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import { z } from 'zod';
 
-import { userUpdateSchema, userUpdateProps } from '@/utils/types/user';
+import { userUpdateProps } from '@/utils/types/user';
 import { env } from 'data/env/server';
 
-interface User {
-  email: string;
-  first_name: string;
-  last_name: string;
-  profile_image_url: string;
-  user_id: string;
-}
-
-type UserUpdateResponse = PostgrestError | User[] | null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type UserUpdateResponse = PostgrestError[] | any[];
 
 export const userUpdate = async ({
   email,
@@ -26,7 +20,7 @@ export const userUpdate = async ({
   profile_image_url,
   user_id,
 }: userUpdateProps): Promise<UserUpdateResponse> => {
-  const cookieStore = await cookies(); // Correct: Await the promise
+  const cookieStore = await cookies();
 
   const supabase = createServerClient(
     env.SUPABASE_URL,
@@ -34,49 +28,39 @@ export const userUpdate = async ({
     {
       cookies: {
         get(name: string) {
-          const cookieValue = cookieStore.get(name)?.value; // Correct: Use `cookieStore` here
-          return cookieValue ?? undefined;
+          const cookieValue = cookieStore.get(name)?.value;
+          return cookieValue ?? undefined; // Handle undefined explicitly
         },
       },
     }
   );
 
   try {
-    // Validate input data against the schema
-    userUpdateSchema.parse({
-      email,
-      first_name,
-      last_name,
-      profile_image_url,
-      user_id,
-    });
-
     const { data, error } = await supabase
       .from('user')
-      .update({
-        first_name,
-        last_name,
-        profile_image_url,
-      })
-      .eq('user_id', user_id)
+      .update([
+        {
+          email,
+          first_name,
+          last_name,
+          profile_image_url,
+          user_id,
+        },
+      ])
+      .eq('email', email)
       .select();
 
     if (error) {
-      console.error('Error updating user:', error);
-      return error;
+      return [error];
     }
-    if (data && data.length > 0) {
-      return data as User[];
+
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+    return data;
+  } catch (err: unknown) {
+    if (err instanceof Error) {
+      throw new Error(err.message); // Handle known error type
     }
-    return null;
-  } catch (error: unknown) {
-    console.error('Error updating user:', error);
-    if (error instanceof z.ZodError) {
-      throw new Error(`Validation Error: ${error.message}`);
-    }
-    if (error instanceof Error && 'message' in error) {
-      throw new Error(error.message);
-    }
-    throw new Error('An unknown error occurred');
+    throw new Error('An unknown error occurred'); // Handle unknown error types
   }
 };
+

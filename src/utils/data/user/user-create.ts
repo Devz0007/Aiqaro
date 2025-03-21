@@ -1,3 +1,5 @@
+UserCreate
+
 // src/utils/data/user/user-create.ts
 'server only';
 
@@ -9,15 +11,8 @@ import { z } from 'zod';
 import { userCreateSchema, userUpdateProps } from '@/utils/types/user';
 import { env } from 'data/env/server';
 
-interface User {
-  email: string;
-  first_name: string;
-  last_name: string;
-  profile_image_url: string;
-  user_id: string;
-}
-
-type UserCreateResponse = PostgrestError | User[] | null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type UserCreateResponse = PostgrestError[] | any[];
 
 export const userCreate = async ({
   email,
@@ -26,7 +21,7 @@ export const userCreate = async ({
   profile_image_url,
   user_id,
 }: userUpdateProps): Promise<UserCreateResponse> => {
-  const cookieStore = await cookies(); // Correct: Await the promise
+  const cookieStore = await cookies();
 
   const supabase = createServerClient(
     env.SUPABASE_URL,
@@ -34,7 +29,7 @@ export const userCreate = async ({
     {
       cookies: {
         get(name: string) {
-          const cookieValue = cookieStore.get(name)?.value; // Correct: Use `cookieStore` here
+          const cookieValue = cookieStore.get(name)?.value;
           return cookieValue ?? undefined;
         },
       },
@@ -65,13 +60,11 @@ export const userCreate = async ({
       .select();
 
     if (error) {
-      console.error('Error creating user:', error);
-      return error;
+      return [error];
     }
-    if (data && data.length > 0) {
-      return data as User[];
-    }
-    return null;
+
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+    return data;
   } catch (error: unknown) {
     console.error('Error creating user:', error);
     if (error instanceof z.ZodError) {
@@ -83,3 +76,4 @@ export const userCreate = async ({
     throw new Error('An unknown error occurred');
   }
 };
+
