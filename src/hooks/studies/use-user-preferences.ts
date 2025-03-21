@@ -5,6 +5,7 @@ import {
   useQuery,
   useQueryClient,
   UseQueryResult,
+  UseMutationResult,
 } from '@tanstack/react-query';
 import { z } from 'zod';
 
@@ -56,11 +57,11 @@ const saveUserPreferences = async ({ userId, preferences }: { userId: string; pr
     throw new Error(`Failed to save preferences: ${response.statusText}`);
   }
   
-  return await response.json(); // Return the saved preferences
+  return response.json(); // Return the saved preferences
 };
 
 // React Query hook to save preferences
-export const useSaveUserPreferences = () => {
+export const useSaveUserPreferences = (): UseMutationResult<Partial<SearchFilters>, Error, { userId: string; preferences: Partial<SearchFilters> }> => {
   return useMutation<Partial<SearchFilters>, Error, { userId: string; preferences: Partial<SearchFilters> }>({
     mutationFn: saveUserPreferences,
   });
