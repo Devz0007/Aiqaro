@@ -1,3 +1,4 @@
+// src/hooks/studies/use-user-preferences.ts
 'use client';
 
 import {
@@ -6,7 +7,8 @@ import {
   UseQueryResult,
   UseMutationResult,
 } from '@tanstack/react-query';
-import { z } from 'zod';
+// Remove the unused import for z
+// import { z } from 'zod';
 
 import {
   SearchFiltersSchema,
