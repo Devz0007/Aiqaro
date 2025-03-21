@@ -1,76 +1,33 @@
 // src/utils/data/user/user-create.ts
-'server only';
+import { prisma } from '@/utils/data/client/prima'; // <-- IMPORT the exported client
 
-import { PostgrestError } from '@supabase/postgrest-js';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
-import { z } from 'zod';
-
-import { userCreateSchema, userUpdateProps } from '@/utils/types/user';
-import { env } from 'data/env/server';
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type UserCreateResponse = PostgrestError[] | any[];
+interface UserCreateProps {
+  user_id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  profile_image_url: string;
+}
 
 export const userCreate = async ({
+  user_id,
   email,
   first_name,
   last_name,
   profile_image_url,
-  user_id,
-}: userUpdateProps): Promise<UserCreateResponse> => {
-  const cookieStore = await cookies();
-
-  const supabase = createServerClient(
-    env.SUPABASE_URL,
-    env.SUPABASE_SERVICE_KEY,
-    {
-      cookies: {
-        get(name: string) {
-          const cookieValue = cookieStore.get(name)?.value;
-          return cookieValue ?? undefined;
-        },
-      },
-    }
-  );
-
+}: UserCreateProps): Promise<void> => {
   try {
-    // Validate input data against the schema
-    userCreateSchema.parse({
-      email,
-      first_name,
-      last_name,
-      profile_image_url,
-      user_id,
+    await prisma.user.create({ // <-- USE the imported client
+      data: {
+        id: user_id,
+        email,
+        firstName: first_name,
+        lastName: last_name,
+        profileImageUrl: profile_image_url,
+      },
     });
-
-    const { data, error } = await supabase
-      .from('user')
-      .insert([
-        {
-          email,
-          first_name,
-          last_name,
-          profile_image_url,
-          user_id,
-        },
-      ])
-      .select();
-
-    if (error) {
-      return [error];
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-    return data;
-  } catch (error: unknown) {
+  } catch (error) {
     console.error('Error creating user:', error);
-    if (error instanceof z.ZodError) {
-      throw new Error(`Validation Error: ${error.message}`);
-    }
-    if (error instanceof Error && 'message' in error) {
-      throw new Error(error.message);
-    }
-    throw new Error('An unknown error occurred');
+    throw error;
   }
 };
