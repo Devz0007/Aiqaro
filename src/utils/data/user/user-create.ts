@@ -27,9 +27,9 @@ export const userCreate = async ({
       data: {
         id: userIdAsInt, // Use the converted integer
         email,
-        firstName: first_name,
-        lastName: last_name,
-        profileImageUrl: profile_image_url,
+        first_name, // Corrected to snake_case
+        last_name, // Corrected to snake_case
+        profile_image_url, // Corrected to snake_case
       },
     });
   } catch (error) {
