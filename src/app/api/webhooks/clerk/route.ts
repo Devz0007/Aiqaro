@@ -17,6 +17,52 @@ function safeGetString(obj: unknown, key: string): string | undefined {
   return undefined;
 }
 
+// Direct DB insert function as a fallback
+async function directInsertUser(userData: {
+  email: string;
+  first_name: string;
+  last_name: string;
+  profile_image_url: string;
+  user_id: string;
+}) {
+  console.log('[DIRECT_INSERT] Attempting direct user insert as fallback');
+  
+  try {
+    // Import PrismaClient directly to bypass potential Supabase issues
+    const { PrismaClient } = await import('@prisma/client');
+    const prisma = new PrismaClient();
+    
+    console.log('[DIRECT_INSERT] Checking if user already exists');
+    const existingUser = await prisma.user.findUnique({
+      where: { user_id: userData.user_id }
+    });
+    
+    if (existingUser) {
+      console.log('[DIRECT_INSERT] User already exists, skipping insert');
+      await prisma.$disconnect();
+      return { success: true, message: 'User already exists' };
+    }
+    
+    console.log('[DIRECT_INSERT] Creating user with Prisma');
+    const result = await prisma.user.create({
+      data: {
+        email: userData.email,
+        first_name: userData.first_name,
+        last_name: userData.last_name,
+        profile_image_url: userData.profile_image_url,
+        user_id: userData.user_id,
+      }
+    });
+    
+    console.log('[DIRECT_INSERT] User created successfully with Prisma', result);
+    await prisma.$disconnect();
+    return { success: true, data: result };
+  } catch (error) {
+    console.error('[DIRECT_INSERT] Error in direct insert:', error instanceof Error ? error.message : String(error));
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
 export async function POST(req: Request): Promise<Response> {
   console.log('[CLERK WEBHOOK] Request received');
   
@@ -134,20 +180,40 @@ export async function POST(req: Request): Promise<Response> {
         });
         
         try {
-          console.log('[CLERK WEBHOOK] Creating user with data:', userData);
+          console.log('[CLERK WEBHOOK] Attempting to create user with Supabase');
           const result = await userCreate(userData);
           console.log('[CLERK WEBHOOK] User creation result:', result);
           
+          // Return success
           return NextResponse.json(
             { success: true, message: 'User created successfully' },
             { status: 200, headers: responseHeaders }
           );
-        } catch (error: unknown) {
-          console.error('[CLERK WEBHOOK] Error in userCreate:', error instanceof Error ? error.message : String(error));
-          return NextResponse.json(
-            { error: 'Failed to create user', details: error instanceof Error ? error.message : 'Unknown error' },
-            { status: 500, headers: responseHeaders }
-          );
+        } catch (supabaseError: unknown) {
+          console.error('[CLERK WEBHOOK] Supabase user creation failed, trying direct Prisma insert', {
+            error: supabaseError instanceof Error ? supabaseError.message : String(supabaseError)
+          });
+          
+          // Try direct Prisma insert as fallback
+          const directResult = await directInsertUser(userData);
+          
+          if (directResult.success) {
+            console.log('[CLERK WEBHOOK] Direct insert successful');
+            return NextResponse.json(
+              { success: true, message: 'User created successfully via direct insert' },
+              { status: 200, headers: responseHeaders }
+            );
+          } else {
+            console.error('[CLERK WEBHOOK] Both Supabase and direct insert failed');
+            return NextResponse.json(
+              { 
+                error: 'Failed to create user', 
+                supabaseError: supabaseError instanceof Error ? supabaseError.message : 'Unknown error',
+                directError: directResult.error
+              },
+              { status: 500, headers: responseHeaders }
+            );
+          }
         }
       } else if (eventType === 'user.updated') {
         // Extract email with validation
