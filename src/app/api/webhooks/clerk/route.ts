@@ -95,12 +95,37 @@ export async function POST(req: Request): Promise<Response> {
       
       // Handle the event based on type
       if (eventType === 'user.created') {
+        // Extract email with validation
+        const email = evt.data.email_addresses?.[0]?.email_address ?? '';
+        if (!email) {
+          console.error('[CLERK WEBHOOK] No email address found in payload');
+          return NextResponse.json(
+            { error: 'No email address found' },
+            { status: 400, headers: responseHeaders }
+          );
+        }
+
+        // Extract user_id with validation
+        const user_id = evt.data.id ?? '';
+        if (!user_id) {
+          console.error('[CLERK WEBHOOK] No user ID found in payload');
+          return NextResponse.json(
+            { error: 'No user ID found' },
+            { status: 400, headers: responseHeaders }
+          );
+        }
+
+        // Handle profile data with fallbacks for missing fields
+        const first_name = evt.data.first_name || evt.data.username || '';
+        const last_name = evt.data.last_name || '';
+        const profile_image_url = evt.data.image_url || '';
+        
         const userData = {
-          email: evt.data.email_addresses?.[0]?.email_address ?? '',
-          first_name: evt.data.first_name ?? '',
-          last_name: evt.data.last_name ?? '',
-          profile_image_url: evt.data.image_url ?? '',
-          user_id: evt.data.id ?? '',
+          email,
+          first_name,
+          last_name,
+          profile_image_url,
+          user_id,
         };
         
         console.log('[CLERK WEBHOOK] Environment variables check:', { 
@@ -125,13 +150,37 @@ export async function POST(req: Request): Promise<Response> {
           );
         }
       } else if (eventType === 'user.updated') {
-        // Handle user update similarly
+        // Extract email with validation
+        const email = evt.data.email_addresses?.[0]?.email_address ?? '';
+        if (!email) {
+          console.error('[CLERK WEBHOOK] No email address found in payload');
+          return NextResponse.json(
+            { error: 'No email address found' },
+            { status: 400, headers: responseHeaders }
+          );
+        }
+
+        // Extract user_id with validation
+        const user_id = evt.data.id ?? '';
+        if (!user_id) {
+          console.error('[CLERK WEBHOOK] No user ID found in payload');
+          return NextResponse.json(
+            { error: 'No user ID found' },
+            { status: 400, headers: responseHeaders }
+          );
+        }
+
+        // Handle profile data with fallbacks for missing fields
+        const first_name = evt.data.first_name || evt.data.username || '';
+        const last_name = evt.data.last_name || '';
+        const profile_image_url = evt.data.image_url || '';
+        
         const userData = {
-          email: evt.data.email_addresses?.[0]?.email_address ?? '',
-          first_name: evt.data.first_name ?? '',
-          last_name: evt.data.last_name ?? '',
-          profile_image_url: evt.data.image_url ?? '',
-          user_id: evt.data.id ?? '',
+          email,
+          first_name,
+          last_name,
+          profile_image_url,
+          user_id,
         };
         
         try {
