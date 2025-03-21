@@ -9,116 +9,151 @@ import { userUpdate } from '@/utils/data/user/user-update';
 import { env } from 'data/env/server';
 
 export async function POST(req: Request): Promise<Response> {
-  const WEBHOOK_SECRET = env.CLERK_WEBHOOK_SECRET;
-
-  if (!WEBHOOK_SECRET) {
-    throw new Error(
-      'Please add WEBHOOK_SECRET from Clerk Dashboard to .env or .env.local'
-    );
-  }
-
-  // Get the headers
-  const headerPayload = await headers();
-  const svix_id = headerPayload.get('svix-id');
-  const svix_timestamp = headerPayload.get('svix-timestamp');
-  const svix_signature = headerPayload.get('svix-signature');
-
-  if (
-    svix_id === null ||
-    svix_id.length === 0 ||
-    svix_timestamp === null ||
-    svix_timestamp.length === 0 ||
-    svix_signature === null ||
-    svix_signature.length === 0
-  ) {
-    return new Response('Error occurred -- missing svix headers', {
-      status: 400,
-    });
-  }
-  // Get the body
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-  const rawPayload = await req.json();
-  const body = JSON.stringify(rawPayload);
-
-  const wh = new Webhook(WEBHOOK_SECRET);
-
-  let evt: WebhookEvent;
-
+  console.log('[CLERK WEBHOOK] Request received');
+  
+  // Initial response to prevent timeouts
+  const responseHeaders = {
+    'Content-Type': 'application/json',
+  };
+  
   try {
-    evt = wh.verify(body, {
-      'svix-id': svix_id,
-      'svix-timestamp': svix_timestamp,
-      'svix-signature': svix_signature,
-    }) as WebhookEvent;
-  } catch (err: unknown) {
-    if (err instanceof Error) {
-      console.error('Error verifying webhook:', err.message);
-    } else {
-      console.error('Error verifying webhook:', err);
+    const WEBHOOK_SECRET = env.CLERK_WEBHOOK_SECRET;
+
+    if (!WEBHOOK_SECRET) {
+      console.error('[CLERK WEBHOOK] No webhook secret found in environment variables');
+      return NextResponse.json(
+        { error: 'Missing webhook secret' },
+        { status: 400, headers: responseHeaders }
+      );
     }
-    return new Response('Error occurred', { status: 400 });
-  }
 
-  const eventType = evt.type;
+    // Get the headers
+    const headerPayload = await headers();
+    const svix_id = headerPayload.get('svix-id');
+    const svix_timestamp = headerPayload.get('svix-timestamp');
+    const svix_signature = headerPayload.get('svix-signature');
 
-  switch (eventType) {
-    case 'user.created':
-      try {
-        await userCreate({
+    console.log('[CLERK WEBHOOK] Headers received', { 
+      svix_id_present: !!svix_id,
+      svix_timestamp_present: !!svix_timestamp,
+      svix_signature_present: !!svix_signature 
+    });
+
+    if (
+      !svix_id ||
+      !svix_timestamp ||
+      !svix_signature
+    ) {
+      console.error('[CLERK WEBHOOK] Missing svix headers');
+      return NextResponse.json(
+        { error: 'Missing svix headers' },
+        { status: 400, headers: responseHeaders }
+      );
+    }
+    
+    // Get the body
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const rawPayload = await req.json();
+    console.log('[CLERK WEBHOOK] Raw payload received', { 
+      type: rawPayload?.type,
+      data_id: rawPayload?.data?.id
+    });
+    
+    const body = JSON.stringify(rawPayload);
+
+    // Verify webhook signature
+    try {
+      console.log('[CLERK WEBHOOK] Attempting to verify webhook');
+      const wh = new Webhook(WEBHOOK_SECRET);
+      const evt = wh.verify(body, {
+        'svix-id': svix_id,
+        'svix-timestamp': svix_timestamp,
+        'svix-signature': svix_signature,
+      }) as WebhookEvent;
+      console.log('[CLERK WEBHOOK] Verification successful');
+      
+      const eventType = evt.type;
+      console.log(`[CLERK WEBHOOK] Event type: ${eventType}`);
+      
+      // Handle the event based on type
+      if (eventType === 'user.created') {
+        const userData = {
           email: evt.data.email_addresses?.[0]?.email_address ?? '',
           first_name: evt.data.first_name ?? '',
           last_name: evt.data.last_name ?? '',
           profile_image_url: evt.data.image_url ?? '',
           user_id: evt.data.id ?? '',
+        };
+        
+        console.log('[CLERK WEBHOOK] Environment variables check:', { 
+          supabase_url: env.SUPABASE_URL,
+          supabase_key_present: !!env.SUPABASE_SERVICE_KEY
         });
-
-        return NextResponse.json({
-          status: 200,
-          message: 'User info inserted',
-        });
-      } catch (error: unknown) {
-        if (error instanceof Error) {
-          return NextResponse.json({
-            status: 400,
-            message: error.message,
-          });
+        
+        try {
+          console.log('[CLERK WEBHOOK] Creating user with data:', userData);
+          const result = await userCreate(userData);
+          console.log('[CLERK WEBHOOK] User creation result:', result);
+          
+          return NextResponse.json(
+            { success: true, message: 'User created successfully' },
+            { status: 200, headers: responseHeaders }
+          );
+        } catch (error: unknown) {
+          console.error('[CLERK WEBHOOK] Error in userCreate:', error instanceof Error ? error.message : error);
+          return NextResponse.json(
+            { error: 'Failed to create user', details: error instanceof Error ? error.message : 'Unknown error' },
+            { status: 500, headers: responseHeaders }
+          );
         }
-        return NextResponse.json({
-          status: 400,
-          message: 'An unknown error occurred',
-        });
-      }
-
-    case 'user.updated':
-      try {
-        await userUpdate({
+      } else if (eventType === 'user.updated') {
+        // Handle user update similarly
+        const userData = {
           email: evt.data.email_addresses?.[0]?.email_address ?? '',
           first_name: evt.data.first_name ?? '',
           last_name: evt.data.last_name ?? '',
           profile_image_url: evt.data.image_url ?? '',
           user_id: evt.data.id ?? '',
-        });
-
-        return NextResponse.json({
-          status: 200,
-          message: 'User info updated',
-        });
-      } catch (error: unknown) {
-        if (error instanceof Error) {
-          return NextResponse.json({
-            status: 400,
-            message: error.message,
-          });
+        };
+        
+        try {
+          console.log('[CLERK WEBHOOK] Updating user with data:', userData);
+          const result = await userUpdate(userData);
+          console.log('[CLERK WEBHOOK] User update result:', result);
+          
+          return NextResponse.json(
+            { success: true, message: 'User updated successfully' },
+            { status: 200, headers: responseHeaders }
+          );
+        } catch (error: unknown) {
+          console.error('[CLERK WEBHOOK] Error in userUpdate:', error instanceof Error ? error.message : error);
+          return NextResponse.json(
+            { error: 'Failed to update user', details: error instanceof Error ? error.message : 'Unknown error' },
+            { status: 500, headers: responseHeaders }
+          );
         }
-        return NextResponse.json({
-          status: 400,
-          message: 'An unknown error occurred',
-        });
+      } else {
+        // Respond to unhandled event types
+        console.log(`[CLERK WEBHOOK] Unhandled event type: ${eventType}`);
+        return NextResponse.json(
+          { success: true, message: 'Event received but not processed' },
+          { status: 200, headers: responseHeaders }
+        );
       }
-
-    default:
-      return new Response('Error occurred -- unhandled event type', {
-        status: 400,
+    } catch (verificationError: unknown) {
+      console.error('[CLERK WEBHOOK] Verification failed', { 
+        error: verificationError instanceof Error ? verificationError.message : verificationError
       });
+      return NextResponse.json(
+        { error: 'Invalid webhook signature' },
+        { status: 400, headers: responseHeaders }
+      );
+    }
+  } catch (error: unknown) {
+    console.error('[CLERK WEBHOOK] Unexpected error:', error instanceof Error ? error.message : error);
+    return NextResponse.json(
+      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500, headers: responseHeaders }
+    );
   }
 }
