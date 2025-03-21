@@ -16,22 +16,15 @@ export const userUpdate = async ({
   last_name,
   profile_image_url,
 }: UserUpdateProps): Promise<void> => {
-  const userIdAsInt = parseInt(user_id, 10); // Convert to integer
-
-  if (isNaN(userIdAsInt)) {
-    throw new Error(`Invalid user_id: ${user_id}. Cannot convert to integer.`);
-  }
-
   try {
     await prisma.user.update({
       where: {
-        id: userIdAsInt, // Use the converted integer
+        email, // Use email to find the user
       },
       data: {
-        email,
-        first_name, // Corrected to snake_case
-        last_name, // Corrected to snake_case
-        profile_image_url, // Corrected to snake_case
+        first_name,
+        last_name,
+        profile_image_url,
       },
     });
   } catch (error) {
