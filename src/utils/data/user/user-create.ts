@@ -26,7 +26,7 @@ export const userCreate = async ({
   profile_image_url,
   user_id,
 }: userUpdateProps): Promise<UserCreateResponse> => {
-  const cookieStore = cookies();
+  const cookieStore = await cookies(); // Correct: Await the promise
 
   const supabase = createServerClient(
     env.SUPABASE_URL,
@@ -34,7 +34,7 @@ export const userCreate = async ({
     {
       cookies: {
         get(name: string) {
-          const cookieValue = cookieStore.get(name)?.value;
+          const cookieValue = cookieStore.get(name)?.value; // Correct: Use `cookieStore` here
           return cookieValue ?? undefined;
         },
       },
