@@ -29,8 +29,9 @@ const fetchUserPreferences = async (userId: string): Promise<Partial<SearchFilte
     throw new Error(`Failed to fetch preferences: ${response.statusText}`);
   }
   
-  const data = await response.json();
-  return SearchFiltersSchema.parse(data) as Partial<SearchFilters>; // Explicitly type the returned data
+  // Type explicitly as unknown first, then parse with Zod
+  const responseData: unknown = await response.json();
+  return SearchFiltersSchema.parse(responseData);
 };
 
 // React Query hook to fetch preferences
@@ -58,8 +59,9 @@ const saveUserPreferences = async ({ userId, preferences }: { userId: string; pr
     throw new Error(`Failed to save preferences: ${response.statusText}`);
   }
   
-  const data = await response.json();
-  return data as Partial<SearchFilters>; // Explicitly type the returned data
+  // Type explicitly as unknown first, then parse with Zod
+  const responseData: unknown = await response.json();
+  return SearchFiltersSchema.parse(responseData);
 };
 
 // React Query hook to save preferences
