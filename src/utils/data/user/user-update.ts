@@ -65,8 +65,10 @@ export const userUpdate = async ({
       console.error('Error updating user:', error);
       return error;
     }
-
-    return data;
+    if (data) {
+      return data as User[];
+    }
+    return null;
   } catch (error: unknown) {
     console.error('Error updating user:', error);
     if (error instanceof z.ZodError) {

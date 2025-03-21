@@ -68,8 +68,10 @@ export const userCreate = async ({
       console.error('Error creating user:', error);
       return error;
     }
-
-    return data;
+    if (data) {
+      return data as User[];
+    }
+    return null;
   } catch (error: unknown) {
     console.error('Error creating user:', error);
     if (error instanceof z.ZodError) {
