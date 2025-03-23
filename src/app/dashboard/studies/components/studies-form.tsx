@@ -371,7 +371,10 @@ const StudiesForm = ({
                   type="button"
                   variant={field.value ? "default" : "outline"}
                   className={`flex items-center gap-2 w-full sm:w-auto h-10 px-4 ${field.value ? "bg-primary text-primary-foreground" : "border-dashed"}`}
-                  onClick={() => field.onChange(!field.value)}
+                  onClick={() => {
+                    const newValue = !field.value;
+                    field.onChange(newValue);
+                  }}
                 >
                   <svg 
                     xmlns="http://www.w3.org/2000/svg" 

@@ -62,10 +62,25 @@ export default function ClinicalTrialsSearch(): React.JSX.Element {
   } = useStudiesInfiniteQuery(formData);
 
   // Fetch user bookmarks to filter studies
-  const { data: userBookmarks, isLoading: isLoadingBookmarks } = useFetchAllBookmarksByUserId({
+  const { data: userBookmarks, isLoading: isLoadingBookmarks, refetch: refetchBookmarks } = useFetchAllBookmarksByUserId({
     userId: user?.id ?? '',
-    enabled: !!user && formData.showBookmarksOnly === true,
+    enabled: !!user, // Always fetch bookmarks when user is logged in
   });
+
+  // Log the bookmarks for debugging
+  useEffect(() => {
+    if (formData.showBookmarksOnly && userBookmarks) {
+      console.log("Total bookmarks fetched:", userBookmarks.length);
+      console.log("Bookmark data sample:", userBookmarks.slice(0, 2));
+    }
+  }, [formData.showBookmarksOnly, userBookmarks]);
+
+  // Refetch bookmarks when toggle changes
+  useEffect(() => {
+    if (user && formData.showBookmarksOnly) {
+      refetchBookmarks();
+    }
+  }, [formData.showBookmarksOnly, refetchBookmarks, user]);
 
   // Filter studies based on bookmarks if showBookmarksOnly is true
   const studies: Study[] = React.useMemo(() => {
@@ -75,18 +90,30 @@ export default function ClinicalTrialsSearch(): React.JSX.Element {
       return allStudies;
     }
     
+    // Make sure we have bookmarks
+    if (userBookmarks.length === 0) {
+      console.log("No bookmarks found for filtering");
+      return [];
+    }
+    
+    console.log(`Filtering ${allStudies.length} studies with ${userBookmarks.length} bookmarks`);
+    
     // Create a Set of bookmarked NCT IDs for faster lookup
     const bookmarkedNctIds = new Set(
-      userBookmarks
-        .filter(bookmark => bookmark.is_bookmarked)
-        .map(bookmark => bookmark.nct_id)
+      userBookmarks.map(bookmark => bookmark.nct_id)
     );
     
+    console.log("First few bookmarked NCT IDs:", Array.from(bookmarkedNctIds).slice(0, 3));
+    
     // Filter studies to only show bookmarked ones
-    return allStudies.filter(study => {
+    const filteredStudies = allStudies.filter(study => {
       const nctId = study.protocolSection?.identificationModule?.nctId ?? '';
-      return bookmarkedNctIds.has(nctId);
+      const isIncluded = bookmarkedNctIds.has(nctId);
+      return isIncluded;
     });
+    
+    console.log(`Found ${filteredStudies.length} matching studies after filtering`);
+    return filteredStudies;
   }, [data?.pages, formData.showBookmarksOnly, userBookmarks]);
 
   const totalCount = data?.pages[0]?.totalCount ?? 0;
@@ -178,7 +205,7 @@ export default function ClinicalTrialsSearch(): React.JSX.Element {
             {studies.length > 0 ? (
               <p className="text-center text-sm text-muted-foreground">
                 Showing {studies.length} {formData.showBookmarksOnly ? 'bookmarked ' : ''}
-                out of {formData.showBookmarksOnly ? (userBookmarks?.filter(b => b.is_bookmarked).length || 0) : totalCount} studies
+                out of {formData.showBookmarksOnly ? (userBookmarks?.length || 0) : totalCount} studies
               </p>
             ) : (
               <div className="text-center mt-8">

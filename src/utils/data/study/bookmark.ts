@@ -14,13 +14,26 @@ export const fetchAllBookmarksByUserId = async ({
     if (userId.length === 0) {
       throw new Error('User ID is required');
     }
-    const bookmarks = await prisma.bookmarks.findMany({
+    
+    console.log(`[Bookmarks] Fetching bookmarks for user ${userId}`);
+    
+    // First fetch all bookmarks for the user
+    const allBookmarks = await prisma.bookmarks.findMany({
       where: {
         user_id: userId,
       },
     });
-    return bookmarks;
+    
+    console.log(`[Bookmarks] Found ${allBookmarks.length} total bookmarks`);
+    
+    // Then filter out the ones that are not active (is_bookmarked !== true)
+    const activeBookmarks = allBookmarks.filter(bookmark => bookmark.is_bookmarked === true);
+    
+    console.log(`[Bookmarks] After filtering, ${activeBookmarks.length} active bookmarks`);
+    
+    return activeBookmarks;
   } catch (error) {
+    console.error('[Bookmarks] Error fetching bookmarks:', error);
     if (error instanceof Error) {
       throw new Error(error.message);
     }
