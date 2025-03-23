@@ -6,6 +6,8 @@ import {
   Users,
   Link2,
   Bookmark,
+  Mail,
+  Phone,
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 
@@ -58,6 +60,13 @@ const StudyCard = ({
   const sponsorName =
     protocol?.sponsorCollaboratorsModule?.leadSponsor?.name ?? 'Not Specified';
   const studyUrl = `https://clinicaltrials.gov/study/${nctId}`;
+  
+  // Extract contact information
+  const centralContacts = protocol?.contactsLocationsModule?.centralContacts || [];
+  const contactEmail = centralContacts[0]?.email;
+  const contactPhone = centralContacts[0]?.phone;
+  const hasContactInfo = contactEmail || contactPhone;
+  
   const [isBookmarked, setIsBookmarked] = useState(_isBookmarked);
 
   const { mutate: createBookmark } = useCreateBookmarkStudy();
@@ -136,6 +145,35 @@ const StudyCard = ({
             </div>
           </div>
         ))}
+        
+        {/* Contact Information */}
+        {hasContactInfo && (
+          <div className="col-span-1 sm:col-span-2 flex flex-col gap-2 border-t pt-2 mt-1">
+            <div className="font-medium text-xs">Contact Information</div>
+            <div className="flex flex-wrap gap-x-4 gap-y-2">
+              {contactEmail && (
+                <a 
+                  href={`mailto:${contactEmail}`}
+                  className="flex items-center gap-1 text-primary hover:underline"
+                  title="Send email"
+                >
+                  <Mail className="w-3 h-3" />
+                  <span className="text-xs">{contactEmail}</span>
+                </a>
+              )}
+              {contactPhone && (
+                <a 
+                  href={`tel:${contactPhone}`}
+                  className="flex items-center gap-1 text-primary hover:underline"
+                  title="Call phone number"
+                >
+                  <Phone className="w-3 h-3" />
+                  <span className="text-xs">{contactPhone}</span>
+                </a>
+              )}
+            </div>
+          </div>
+        )}
       </CardContent>
       <div className="px-2 md:px-4 flex justify-between items-center mt-1">
         <Badge
