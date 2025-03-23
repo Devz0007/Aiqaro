@@ -337,16 +337,51 @@ const StudiesForm = ({
             control={form.control}
             name="healthyVolunteers"
             render={({ field }) => (
-              <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+              <FormItem className="flex flex-row items-center space-x-2 space-y-0">
                 <FormControl>
                   <Checkbox
                     checked={field.value}
                     onCheckedChange={field.onChange}
                   />
                 </FormControl>
-                <div className="space-y-1 leading-none">
-                  <FormLabel>Healthy Volunteers</FormLabel>
-                </div>
+                <FormLabel className="text-sm font-normal">
+                  Healthy volunteers only
+                </FormLabel>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Bookmarks Filter Toggle */}
+          <FormField
+            control={form.control}
+            name="showBookmarksOnly"
+            render={({ field }) => (
+              <FormItem className="col-span-1 sm:col-span-2 lg:col-span-3 mt-4">
+                <Button
+                  type="button"
+                  variant={field.value ? "default" : "outline"}
+                  className={`flex items-center space-x-2 ${field.value ? "bg-primary text-primary-foreground" : "border-dashed"}`}
+                  onClick={() => field.onChange(!field.value)}
+                >
+                  <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    width="16" 
+                    height="16" 
+                    viewBox="0 0 24 24" 
+                    fill={field.value ? "currentColor" : "none"}
+                    stroke="currentColor" 
+                    strokeWidth="2" 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                  >
+                    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+                  </svg>
+                  <span>
+                    {field.value ? "Showing My Bookmarks" : "Show My Bookmarks"}
+                  </span>
+                </Button>
+                <FormMessage />
               </FormItem>
             )}
           />

@@ -26,6 +26,7 @@ export const SearchFormSchema = z
     studyId: z.string().optional(),
     gender: z.nativeEnum(Sex),
     healthyVolunteers: z.boolean(),
+    showBookmarksOnly: z.boolean().optional().default(false),
     minAge: z
       .string()
       .optional()

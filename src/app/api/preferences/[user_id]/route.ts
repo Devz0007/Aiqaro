@@ -181,7 +181,7 @@ export async function POST(
           ...data,
           updatedAt: new Date() 
         },
-        create: { 
+        create: {
           userId: user_id,
           ...data,
           createdAt: new Date(),

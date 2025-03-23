@@ -16,6 +16,7 @@ import {
 import { Sex, SortDirection, SortField } from '@/types/clinical-trials/filters';
 import { Study } from '@/types/clinical-trials/study';
 import { SearchForm } from '@/types/common/form';
+import { useFetchAllBookmarksByUserId } from '@/hooks/bookmarks/use-bookmarks';
 
 import { exportStudiesToCSV } from '../../../lib/utils/export-studies-to-csv';
 
@@ -34,6 +35,7 @@ const DEFAULT_FORM_VALUES: SearchForm = {
   maxAge: '100',
   gender: Sex.ALL,
   healthyVolunteers: false,
+  showBookmarksOnly: false,
 };
 
 export default function ClinicalTrialsSearch(): React.JSX.Element {
@@ -59,7 +61,34 @@ export default function ClinicalTrialsSearch(): React.JSX.Element {
     isFetchingNextPage,
   } = useStudiesInfiniteQuery(formData);
 
-  const studies: Study[] = data?.pages.flatMap((page) => page.studies) ?? [];
+  // Fetch user bookmarks to filter studies
+  const { data: userBookmarks, isLoading: isLoadingBookmarks } = useFetchAllBookmarksByUserId({
+    userId: user?.id ?? '',
+    enabled: !!user && formData.showBookmarksOnly === true,
+  });
+
+  // Filter studies based on bookmarks if showBookmarksOnly is true
+  const studies: Study[] = React.useMemo(() => {
+    const allStudies = data?.pages.flatMap((page) => page.studies) ?? [];
+    
+    if (!formData.showBookmarksOnly || !userBookmarks) {
+      return allStudies;
+    }
+    
+    // Create a Set of bookmarked NCT IDs for faster lookup
+    const bookmarkedNctIds = new Set(
+      userBookmarks
+        .filter(bookmark => bookmark.is_bookmarked)
+        .map(bookmark => bookmark.nct_id)
+    );
+    
+    // Filter studies to only show bookmarked ones
+    return allStudies.filter(study => {
+      const nctId = study.protocolSection?.identificationModule?.nctId ?? '';
+      return bookmarkedNctIds.has(nctId);
+    });
+  }, [data?.pages, formData.showBookmarksOnly, userBookmarks]);
+
   const totalCount = data?.pages[0]?.totalCount ?? 0;
 
   // Initialize form data with preferences
@@ -82,6 +111,7 @@ export default function ClinicalTrialsSearch(): React.JSX.Element {
         maxAge: '100',
         gender: Sex.ALL,
         healthyVolunteers: false,
+        showBookmarksOnly: false,
       });
     } else {
       setIsModalOpen(true); // Show modal only when preferences are absent
@@ -104,7 +134,10 @@ export default function ClinicalTrialsSearch(): React.JSX.Element {
     }
   }, [user, isLoaded, router]);
 
-  if (isLoadingStudies || isLoadingPreferences) {
+  // Combined loading state for studies and bookmarks
+  const isLoading = isLoadingStudies || (isLoadingBookmarks && formData.showBookmarksOnly);
+
+  if (isLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
         <Loader />
@@ -134,19 +167,48 @@ export default function ClinicalTrialsSearch(): React.JSX.Element {
         >
           Download CSV
         </Button>
-        {isLoadingStudies && (
-          <div className="flex justify-center items-center">
-            <Loader />
-          </div>
-        )}
         {error && <p className="text-red-500">An error occurred</p>}
 
-        {!isLoadingStudies && !error && (
+        {!isLoading && !error && (
           <>
             <StudiesGrid studies={studies} />
-            <p className="text-center text-sm text-muted-foreground">
-              Showing {studies.length} out of {totalCount} studies
-            </p>
+            {studies.length > 0 ? (
+              <p className="text-center text-sm text-muted-foreground">
+                Showing {studies.length} {formData.showBookmarksOnly ? 'bookmarked ' : ''}
+                out of {formData.showBookmarksOnly ? (userBookmarks?.filter(b => b.is_bookmarked).length || 0) : totalCount} studies
+              </p>
+            ) : (
+              <div className="text-center mt-8">
+                {formData.showBookmarksOnly ? (
+                  <div className="flex flex-col items-center">
+                    <svg 
+                      xmlns="http://www.w3.org/2000/svg" 
+                      width="48" 
+                      height="48" 
+                      viewBox="0 0 24 24" 
+                      fill="none"
+                      stroke="currentColor" 
+                      strokeWidth="1" 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                      className="text-muted-foreground mb-4"
+                    >
+                      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                    <p className="text-muted-foreground mb-2">No bookmarked studies found</p>
+                    <p className="text-muted-foreground text-sm mb-4">Bookmark some studies to see them here</p>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setFormData({...formData, showBookmarksOnly: false})}
+                    >
+                      Show all studies
+                    </Button>
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground">No studies found. Try adjusting your search criteria.</p>
+                )}
+              </div>
+            )}
           </>
         )}
 
