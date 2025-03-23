@@ -146,27 +146,30 @@ export default function ClinicalTrialsSearch(): React.JSX.Element {
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-7xl">
+    <div className="container mx-auto px-2 md:px-6 py-4 max-w-7xl">
       <PreferenceModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSave={handleSavePreferences}
       />
-      <div className="space-y-6">
-        <div className="flex flex-col space-y-4">
-          <p className="text-muted-foreground">
+      <div className="space-y-4 md:space-y-6">
+        <div className="flex flex-col space-y-2">
+          <p className="text-sm md:text-base text-muted-foreground">
             Search through thousands of clinical trials to find relevant studies
           </p>
         </div>
 
         <StudiesForm formData={formData} setFormData={setFormData} />
-        <Button
-          onClick={() => {
-            exportStudiesToCSV(studies);
-          }}
-        >
-          Download CSV
-        </Button>
+        <div className="flex flex-col md:flex-row gap-2 justify-between items-start md:items-center">
+          <Button
+            onClick={() => {
+              exportStudiesToCSV(studies);
+            }}
+            className="w-full md:w-auto"
+          >
+            Download CSV
+          </Button>
+        </div>
         {error && <p className="text-red-500">An error occurred</p>}
 
         {!isLoading && !error && (
@@ -213,16 +216,17 @@ export default function ClinicalTrialsSearch(): React.JSX.Element {
         )}
 
         {hasNextPage && (
-          <div className="flex justify-center items-center">
+          <div className="flex justify-center items-center mt-4">
             <Button
               variant={'default'}
               onClick={() => void fetchNextPage()}
               disabled={isFetchingNextPage}
+              className="w-full md:w-auto"
             >
               {isFetchingNextPage ? (
-                <div className="flex items-center">
-                  <Loader />
-                  Loading...
+                <div className="flex items-center gap-2">
+                  <Loader className="size-4" />
+                  <span>Loading...</span>
                 </div>
               ) : (
                 'Load More'

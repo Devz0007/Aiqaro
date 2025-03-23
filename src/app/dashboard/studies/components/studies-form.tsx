@@ -127,14 +127,14 @@ const StudiesForm = ({
         />
 
         {/* Filters Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4 bg-white rounded-lg border">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-white rounded-lg border">
           {/* Study Phase */}
           <FormField
             control={form.control}
             name="phase"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>Study Phase</FormLabel>
+              <FormItem className="mb-4">
+                <FormLabel className="text-base font-medium">Study Phase</FormLabel>
                 <MultiSelect
                   options={Object.entries(phaseDisplayMap).map(
                     ([value, label]) => ({
@@ -145,6 +145,7 @@ const StudiesForm = ({
                   defaultValue={field.value ?? []}
                   onValueChange={field.onChange}
                   placeholder="Select phases"
+                  className="w-full"
                 />
                 <FormMessage />
               </FormItem>
@@ -156,8 +157,8 @@ const StudiesForm = ({
             control={form.control}
             name="status"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>Study Status</FormLabel>
+              <FormItem className="mb-4">
+                <FormLabel className="text-base font-medium">Study Status</FormLabel>
                 <MultiSelect
                   options={Object.entries(statusDisplayMap).map(
                     ([value, label]) => ({
@@ -168,6 +169,7 @@ const StudiesForm = ({
                   defaultValue={field.value ?? []}
                   onValueChange={field.onChange}
                   placeholder="Select statuses"
+                  className="w-full"
                 />
                 <FormMessage />
               </FormItem>
@@ -179,8 +181,8 @@ const StudiesForm = ({
             control={form.control}
             name="therapeuticArea"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>Therapeutic Area</FormLabel>
+              <FormItem className="mb-4">
+                <FormLabel className="text-base font-medium">Therapeutic Area</FormLabel>
                 <MultiSelect
                   options={THERAPEUTIC_AREAS.map(({ value, label }) => ({
                     label,
@@ -189,6 +191,7 @@ const StudiesForm = ({
                   defaultValue={field.value ?? []}
                   onValueChange={field.onChange}
                   placeholder="Select therapeutic areas"
+                  className="w-full"
                 />
                 <FormMessage />
               </FormItem>
@@ -200,8 +203,8 @@ const StudiesForm = ({
             control={form.control}
             name="location"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>Location</FormLabel>
+              <FormItem className="mb-4">
+                <FormLabel className="text-base font-medium">Location</FormLabel>
                 <FormControl>
                   <Input placeholder="City, State, or Country" {...field} />
                 </FormControl>
@@ -215,8 +218,8 @@ const StudiesForm = ({
             control={form.control}
             name="gender"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>Gender</FormLabel>
+              <FormItem className="mb-4">
+                <FormLabel className="text-base font-medium">Gender</FormLabel>
                 <Select
                   onValueChange={field.onChange}
                   defaultValue={field.value}
@@ -238,14 +241,14 @@ const StudiesForm = ({
           />
 
           {/* Age Range */}
-          <FormItem>
-            <FormLabel>Age Range</FormLabel>
-            <div className="flex flex-col gap-2 sm:flex-row">
+          <FormItem className="mb-4">
+            <FormLabel className="text-base font-medium">Age Range</FormLabel>
+            <div className="grid grid-cols-2 gap-2">
               <FormField
                 control={form.control}
                 name="minAge"
                 render={({ field }) => (
-                  <FormItem className="flex-1">
+                  <FormItem>
                     <FormControl>
                       <Input placeholder="Min" type="number" {...field} />
                     </FormControl>
@@ -257,7 +260,7 @@ const StudiesForm = ({
                 control={form.control}
                 name="maxAge"
                 render={({ field }) => (
-                  <FormItem className="flex-1">
+                  <FormItem>
                     <FormControl>
                       <Input placeholder="Max" type="number" {...field} />
                     </FormControl>
@@ -268,21 +271,21 @@ const StudiesForm = ({
             </div>
           </FormItem>
 
-          {/* Sorting */}
-          <FormItem className="col-span-2">
-            <FormLabel>Sort By</FormLabel>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <FormField
-                control={form.control}
-                name="sortField"
-                render={({ field }) => (
+          {/* Sort By */}
+          <div className="col-span-1 sm:col-span-2 grid sm:grid-cols-2 gap-2">
+            <FormField
+              control={form.control}
+              name="sortField"
+              render={({ field }) => (
+                <FormItem className="mb-4">
+                  <FormLabel className="text-base font-medium">Sort By</FormLabel>
                   <Select
                     onValueChange={field.onChange}
                     defaultValue={field.value}
                   >
                     <FormControl>
-                      <SelectTrigger className="flex-1">
-                        <SelectValue placeholder="Sort field" />
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sort by" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -290,47 +293,53 @@ const StudiesForm = ({
                         Last Updated
                       </SelectItem>
                       <SelectItem value={SortField.ENROLLMENT_COUNT}>
-                        Enrollment Count
+                        Enrollment
                       </SelectItem>
                       <SelectItem value={SortField.STUDY_FIRST_POST_DATE}>
                         First Posted
                       </SelectItem>
                     </SelectContent>
                   </Select>
-                )}
-              />
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-              <FormField
-                control={form.control}
-                name="sortDirection"
-                render={({ field }) => (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() =>
-                      form.setValue(
-                        'sortDirection',
-                        field.value === SortDirection.ASC
-                          ? SortDirection.DESC
-                          : SortDirection.ASC
-                      )
-                    }
+            <FormField
+              control={form.control}
+              name="sortDirection"
+              render={({ field }) => (
+                <FormItem className="mb-4">
+                  <FormLabel className="text-base font-medium">Direction</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
                   >
-                    {field.value === SortDirection.ASC ? (
-                      <ArrowUp className="h-4 w-4" />
-                    ) : (
-                      <ArrowDown className="h-4 w-4" />
-                    )}
-                    <span className="ml-2">
-                      {field.value === SortDirection.ASC
-                        ? 'Ascending'
-                        : 'Descending'}
-                    </span>
-                  </Button>
-                )}
-              />
-            </div>
-          </FormItem>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sort direction" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value={SortDirection.DESC}>
+                        <div className="flex items-center">
+                          <ArrowDown className="mr-2 h-4 w-4" />
+                          Descending
+                        </div>
+                      </SelectItem>
+                      <SelectItem value={SortDirection.ASC}>
+                        <div className="flex items-center">
+                          <ArrowUp className="mr-2 h-4 w-4" />
+                          Ascending
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
 
           {/* Healthy Volunteers */}
           <FormField
@@ -357,17 +366,17 @@ const StudiesForm = ({
             control={form.control}
             name="showBookmarksOnly"
             render={({ field }) => (
-              <FormItem className="col-span-1 sm:col-span-2 lg:col-span-3 mt-4">
+              <FormItem className="col-span-1 sm:col-span-2 mt-4">
                 <Button
                   type="button"
                   variant={field.value ? "default" : "outline"}
-                  className={`flex items-center space-x-2 ${field.value ? "bg-primary text-primary-foreground" : "border-dashed"}`}
+                  className={`flex items-center gap-2 w-full sm:w-auto h-10 px-4 ${field.value ? "bg-primary text-primary-foreground" : "border-dashed"}`}
                   onClick={() => field.onChange(!field.value)}
                 >
                   <svg 
                     xmlns="http://www.w3.org/2000/svg" 
-                    width="16" 
-                    height="16" 
+                    width="20" 
+                    height="20" 
                     viewBox="0 0 24 24" 
                     fill={field.value ? "currentColor" : "none"}
                     stroke="currentColor" 

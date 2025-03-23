@@ -51,6 +51,27 @@ const multiSelectVariants = cva(
   }
 );
 
+// Add a mobile-optimized variant for badges
+const mobileBadgeVariants = cva(
+  'm-1 py-1 px-2 text-xs rounded-full flex items-center gap-1',
+  {
+    variants: {
+      variant: {
+        default:
+          'border-foreground/10 text-foreground bg-card hover:bg-card/80',
+        secondary:
+          'border-foreground/10 bg-secondary text-secondary-foreground hover:bg-secondary/80',
+        destructive:
+          'border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80',
+        inverted: 'inverted',
+      },
+    },
+    defaultVariants: {
+      variant: 'default',
+    },
+  }
+);
+
 /**
  * Props for MultiSelect component
  */
@@ -206,7 +227,7 @@ export const MultiSelect = React.forwardRef<
           >
             {selectedValues.length > 0 ? (
               <div className="flex justify-between items-center w-full">
-                <div className="flex flex-wrap items-center">
+                <div className="flex flex-wrap items-center gap-1">
                   {selectedValues.slice(0, maxCount).map((value) => {
                     const option = options.find((o) => o.value === value);
                     const IconComponent = option?.icon;
@@ -215,21 +236,27 @@ export const MultiSelect = React.forwardRef<
                         key={value}
                         className={cn(
                           isAnimating ? 'animate-bounce' : '',
-                          multiSelectVariants({ variant })
+                          'py-1 px-2 text-xs md:text-sm rounded-full flex items-center gap-1',
+                          mobileBadgeVariants({ variant })
                         )}
                         style={{ animationDuration: `${animation}s` }}
                       >
                         {IconComponent && (
-                          <IconComponent className="h-4 w-4 mr-2" />
+                          <IconComponent className="h-3 w-3 mr-1" />
                         )}
-                        {option?.label}
-                        <XCircle
-                          className="ml-2 h-4 w-4 cursor-pointer"
+                        <span className="truncate max-w-[100px] md:max-w-full">
+                          {option?.label}
+                        </span>
+                        <button
+                          type="button"
+                          className="size-5 md:size-4 flex items-center justify-center rounded-full hover:bg-background/20"
                           onClick={(event) => {
                             event.stopPropagation();
                             toggleOption(value);
                           }}
-                        />
+                        >
+                          <XIcon className="h-3 w-3" />
+                        </button>
                       </Badge>
                     );
                   })}

@@ -100,8 +100,8 @@ const StudyCard = ({
   }
 
   return (
-    <Card className="p-3 flex flex-col gap-2">
-      <CardHeader className="space-y-1">
+    <Card className="p-2 md:p-3 flex flex-col gap-2">
+      <CardHeader className="p-2 md:p-4 space-y-1">
         <CardTitle className="text-sm font-semibold">
           <a
             href={studyUrl}
@@ -117,7 +117,7 @@ const StudyCard = ({
           {officialTitle}
         </CardDescription>
       </CardHeader>
-      <CardContent className="grid grid-cols-2 gap-2 text-xs">
+      <CardContent className="p-2 md:p-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
         {[
           { icon: Activity, label: 'Phase', value: phase },
           {
@@ -128,43 +128,43 @@ const StudyCard = ({
           { icon: MapPin, label: 'Location', value: locationDisplay },
           { icon: Building2, label: 'Sponsor', value: sponsorName },
         ].map(({ icon: Icon, label, value }, idx) => (
-          <div key={idx} className="flex items-center gap-2">
-            <Icon className="w-3 h-3 text-muted-foreground" />
+          <div key={idx} className="flex items-start md:items-center gap-2">
+            <Icon className="w-3 h-3 text-muted-foreground mt-0.5 md:mt-0" />
             <div>
               <div className="font-medium">{label}</div>
-              <div className="text-muted-foreground">{value}</div>
+              <div className="text-muted-foreground truncate max-w-[180px]">{value}</div>
             </div>
           </div>
         ))}
       </CardContent>
-      <div className="flex justify-between items-center mt-2">
+      <div className="px-2 md:px-4 flex justify-between items-center mt-1">
         <Badge
           variant={status === 'RECRUITING' ? 'success' : 'default'}
-          className="text-[10px]"
+          className="text-[10px] px-2 py-0.5 h-5"
         >
           {status}
         </Badge>
         {lastUpdatePostDate && (
-          <span className="text-xs text-muted-foreground">
+          <span className="text-[10px] md:text-xs text-muted-foreground">
             Last Updated {new Date(lastUpdatePostDate).toLocaleDateString()}
           </span>
         )}
       </div>
-      <div className="flex justify-between items-center mt-2">
+      <div className="px-2 md:px-4 pb-2 md:pb-3 flex justify-between items-center mt-1">
         <Button
           variant="outline"
           size="sm"
-          className="text-xs"
+          className="text-xs h-8"
           onClick={() => onViewDetails(nctId)}
         >
           View Details
         </Button>
-        <button onClick={toggleBookmark} className="p-2">
+        <button onClick={toggleBookmark} className="p-2 flex items-center justify-center h-8 w-8 rounded-md border">
           {_isBookmarksLoading ? (
             <Skeleton className="size-5" />
           ) : (
             <Bookmark
-              className={`w-5 h-5 ${
+              className={`w-4 h-4 ${
                 typeof isBookmarked === 'boolean' && isBookmarked
                   ? 'text-primary fill-primary'
                   : 'text-muted-foreground'
