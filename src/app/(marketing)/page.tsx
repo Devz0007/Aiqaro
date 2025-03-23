@@ -36,7 +36,7 @@ export default function HomePage(): React.JSX.Element {
   return (
     <>
       <section 
-        className="min-h-screen pt-36 pb-0 bg-[radial-gradient(hsl(210,72%,65%,40%),hsl(240,62%,73%,40%),hsl(var(--background))_60%)] flex items-center justify-center text-center text-balance flex-col gap-10 px-4 relative overflow-hidden"
+        className="min-h-[85vh] pt-24 pb-0 bg-[radial-gradient(hsl(210,72%,65%,40%),hsl(240,62%,73%,40%),hsl(var(--background))_60%)] flex items-center justify-center text-center text-balance flex-col gap-6 px-4 relative overflow-hidden"
         style={{
           backgroundPosition: `50% ${scrollY * 0.05}px`
         }}
@@ -48,9 +48,9 @@ export default function HomePage(): React.JSX.Element {
           }}
         />
         
-        <div className="relative flex flex-col items-center gap-6 max-w-screen-xl mx-auto">
+        <div className="relative flex flex-col items-center gap-4 max-w-screen-xl mx-auto">
           <h1 
-            className="text-6xl lg:text-7xl xl:text-8xl font-bold tracking-tight"
+            className="text-5xl lg:text-6xl xl:text-7xl font-bold tracking-tight"
             style={{
               transform: `translateY(${Math.min(70, Math.max(0, scrollY * 0.3))}px)`,
               opacity: Math.max(0, 1 - scrollY / 500),
@@ -59,7 +59,7 @@ export default function HomePage(): React.JSX.Element {
             Discover Clinical Trials Efficiently
           </h1>
           <p 
-            className="text-lg lg:text-3xl max-w-screen-xl"
+            className="text-base lg:text-2xl max-w-screen-xl"
             style={{
               transform: `translateY(${Math.min(70, Math.max(0, scrollY * 0.3))}px)`,
               opacity: Math.max(0, 1 - scrollY / 500),
@@ -78,16 +78,19 @@ export default function HomePage(): React.JSX.Element {
           >
             <SignedIn>
               <Link href="/dashboard/studies">
-                <Button className="text-lg p-6 rounded-xl flex gap-2">
+                <Button className="text-lg p-5 rounded-xl flex gap-2">
                   Check it out <ArrowRightIcon className="size-5" />
                 </Button>
               </Link>
             </SignedIn>
             <SignedOut>
               <div className="flex flex-col items-center">
+                <div className="bg-background/30 backdrop-blur-md px-4 py-1 rounded-full mb-3 border border-primary/20">
+                  <p className="text-sm font-semibold text-primary">Exclusive Introductory Offer: Lock in Free Access Today!</p>
+                </div>
                 <Button
                   onClick={() => redirect('/sign-in')}
-                  className="text-lg p-6 rounded-xl flex gap-2"
+                  className="text-lg p-5 rounded-xl flex gap-2 shadow-lg hover:shadow-xl transition-all"
                 >
                   Sign up for Free <ArrowRightIcon className="size-5" />
                 </Button>
@@ -96,19 +99,75 @@ export default function HomePage(): React.JSX.Element {
             </SignedOut>
           </div>
         </div>
+
+        {/* Social Proof - Moved inside hero section */}
+        <div 
+          className="container max-w-screen-xl mx-auto mt-16"
+          style={{
+            transform: `translateY(${Math.min(70, Math.max(0, scrollY * 0.3))}px)`,
+            opacity: scrollY < 100 ? 1 : Math.max(0.75, 1 - (scrollY - 100) / 700),
+          }}
+        >
+          <div className="flex justify-center mb-6">
+            <div className="bg-background/40 backdrop-blur-sm px-6 py-3 rounded-full border border-primary/20 flex items-center">
+              <div className="flex items-center mr-3">
+                <div className="p-1.5 rounded-full bg-primary/10">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+              </div>
+              <p className="text-sm font-medium">Already Trusted by <span className="font-bold">30+ Research Sites</span> & Growing Daily!</p>
+            </div>
+          </div>
+          
+          {/* Benefits Cards - Moved inside hero section */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div className="bg-background/30 backdrop-blur-sm p-4 rounded-xl border border-accent/20 shadow-sm hover:shadow-md transition-all">
+              <div className="flex items-center mb-2">
+                <div className="p-2 rounded-full bg-primary/10 mr-3">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h3 className="font-semibold">Save 10+ Hours Per Week</h3>
+              </div>
+              <p className="text-sm">Instantly connect with sponsors and eliminate manual RFP searches</p>
+            </div>
+            
+            <div className="bg-background/30 backdrop-blur-sm p-4 rounded-xl border border-accent/20 shadow-sm hover:shadow-md transition-all">
+              <div className="flex items-center mb-2">
+                <div className="p-2 rounded-full bg-primary/10 mr-3">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </div>
+                <h3 className="font-semibold">Cut Response Time in Half</h3>
+              </div>
+              <p className="text-sm">Connect directly with trial sponsors and save your preferences for faster matching</p>
+            </div>
+            
+            <div className="bg-background/30 backdrop-blur-sm p-4 rounded-xl border border-accent/20 shadow-sm hover:shadow-md transition-all">
+              <div className="flex items-center mb-2">
+                <div className="p-2 rounded-full bg-primary/10 mr-3">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                </div>
+                <h3 className="font-semibold">No Risk to Try</h3>
+              </div>
+              <p className="text-sm">No credit card needed. No commitment. Just smarter RFP matching.</p>
+            </div>
+          </div>
+        </div>
       </section>
-      <section className="pt-0 pb-4 relative">
+
+      <section className="pt-12 pb-12">
         <div 
           className="container max-w-screen-xl mx-auto px-8"
           ref={dashboardRef}
         >
-          <h2 
-            className="text-4xl text-center font-semibold mb-8"
-            style={{
-              transform: `translateY(${Math.max(0, scrollY * 0.05 - 50)}px)`,
-              opacity: Math.min(1, Math.max(0, (scrollY - 300) / 300))
-            }}
-          >
+          <h2 className="text-4xl text-center font-semibold mb-8">
             Your Aiqaro Dashboard at a Glance
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
