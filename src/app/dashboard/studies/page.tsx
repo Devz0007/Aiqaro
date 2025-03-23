@@ -187,13 +187,31 @@ export default function ClinicalTrialsSearch(): React.JSX.Element {
         </div>
 
         <StudiesForm formData={formData} setFormData={setFormData} />
-        <div className="flex flex-col md:flex-row gap-2 justify-between items-start md:items-center">
+        <div className="flex flex-col md:flex-row gap-2 justify-between items-start md:items-center mt-2">
           <Button
             onClick={() => {
               exportStudiesToCSV(studies);
             }}
-            className="w-full md:w-auto"
+            className="w-full md:w-auto bg-accent hover:bg-accent/90 text-accent-foreground transition-all duration-200 hover:shadow-md group"
+            variant="outline"
+            size="sm"
           >
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              width="16" 
+              height="16" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="currentColor" 
+              strokeWidth="2" 
+              strokeLinecap="round" 
+              strokeLinejoin="round" 
+              className="mr-1.5 transition-transform duration-200 group-hover:translate-y-[1px]"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
             Download CSV
           </Button>
         </div>

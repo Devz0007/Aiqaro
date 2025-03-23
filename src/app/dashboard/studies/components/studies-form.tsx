@@ -3,13 +3,15 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import debounce from 'lodash/debounce';
-import { Search, ArrowUp, ArrowDown } from 'lucide-react';
+import { Search, ArrowUp, ArrowDown, Beaker, Clock, Activity, MapPin, Users, Calendar, List, Download, Bookmark } from 'lucide-react';
 import React from 'react';
 import { useForm } from 'react-hook-form';
 import type { z } from 'zod';
+import { cn } from '@/lib/utils';
 
+import { AgeRangeInput } from '@/components/ui/age-range-input';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
+import { ToggleCheckbox } from '@/components/ui/toggle-checkbox';
 import {
   Form,
   FormControl,
@@ -107,16 +109,20 @@ const StudiesForm = ({
           render={({ field }) => (
             <FormItem>
               <FormControl>
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1 group">
                     <InputWithIcon
-                      placeholder="Search by condition, intervention, or keywords..."
-                      className="w-full"
+                      placeholder="Search conditions, interventions, keywords..."
+                      className="w-full h-10 transition-all group-hover:border-primary/50 focus-within:border-primary"
                       icon={<Search className="w-4 h-4" />}
                       {...field}
                     />
                   </div>
-                  <Button type="submit" className="w-full sm:w-auto">
+                  <Button 
+                    type="submit" 
+                    className="h-10 bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200 hover:shadow-md group"
+                  >
+                    <Search className="mr-1.5 h-4 w-4 transition-transform duration-200 group-hover:scale-110" />
                     Search
                   </Button>
                 </div>
@@ -127,26 +133,32 @@ const StudiesForm = ({
         />
 
         {/* Filters Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-white rounded-lg border">
+        <div className="grid grid-cols-1 md:grid-cols-12 lg:grid-cols-12 gap-4 md:gap-5 p-3 bg-gradient-to-br from-background to-muted/20 rounded-lg border shadow-sm">
           {/* Study Phase */}
           <FormField
             control={form.control}
             name="phase"
             render={({ field }) => (
-              <FormItem className="mb-4">
-                <FormLabel className="text-base font-medium">Study Phase</FormLabel>
-                <MultiSelect
-                  options={Object.entries(phaseDisplayMap).map(
-                    ([value, label]) => ({
-                      label,
-                      value,
-                    })
-                  )}
-                  defaultValue={field.value ?? []}
-                  onValueChange={field.onChange}
-                  placeholder="Select phases"
-                  className="w-full"
-                />
+              <FormItem className="mb-2 col-span-1 md:col-span-3 lg:col-span-3">
+                <FormLabel className="text-sm font-medium flex items-center gap-1.5">
+                  <Beaker className="h-3.5 w-3.5 text-primary/70" />
+                  Phase
+                </FormLabel>
+                <div className="relative group transition-all">
+                  <MultiSelect
+                    options={Object.entries(phaseDisplayMap).map(
+                      ([value, label]) => ({
+                        label,
+                        value,
+                      })
+                    )}
+                    defaultValue={field.value ?? []}
+                    onValueChange={field.onChange}
+                    placeholder="Select phases"
+                    maxCount={2}
+                    className="w-full transition-all group-hover:border-primary/50 pr-6"
+                  />
+                </div>
                 <FormMessage />
               </FormItem>
             )}
@@ -157,246 +169,264 @@ const StudiesForm = ({
             control={form.control}
             name="status"
             render={({ field }) => (
-              <FormItem className="mb-4">
-                <FormLabel className="text-base font-medium">Study Status</FormLabel>
-                <MultiSelect
-                  options={Object.entries(statusDisplayMap).map(
-                    ([value, label]) => ({
-                      label,
-                      value,
-                    })
-                  )}
-                  defaultValue={field.value ?? []}
-                  onValueChange={field.onChange}
-                  placeholder="Select statuses"
-                  className="w-full"
-                />
+              <FormItem className="mb-2 col-span-1 md:col-span-3 lg:col-span-3 relative">
+                <FormLabel className="text-sm font-medium flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5 text-primary/70" />
+                  Status
+                </FormLabel>
+                <div className="relative group transition-all">
+                  <MultiSelect
+                    options={Object.entries(statusDisplayMap).map(
+                      ([value, label]) => ({
+                        label,
+                        value,
+                      })
+                    )}
+                    defaultValue={field.value ?? []}
+                    onValueChange={field.onChange}
+                    placeholder="Select statuses"
+                    maxCount={2}
+                    className="w-full transition-all group-hover:border-primary/50 pr-6"
+                  />
+                </div>
                 <FormMessage />
               </FormItem>
             )}
           />
 
-          {/* Therapeutic Area */}
+          {/* Therapeutic Area - wider */}
           <FormField
             control={form.control}
             name="therapeuticArea"
             render={({ field }) => (
-              <FormItem className="mb-4">
-                <FormLabel className="text-base font-medium">Therapeutic Area</FormLabel>
-                <MultiSelect
-                  options={THERAPEUTIC_AREAS.map(({ value, label }) => ({
-                    label,
-                    value,
-                  }))}
-                  defaultValue={field.value ?? []}
-                  onValueChange={field.onChange}
-                  placeholder="Select therapeutic areas"
-                  className="w-full"
+              <FormItem className="mb-2 col-span-1 md:col-span-4 lg:col-span-4">
+                <FormLabel className="text-sm font-medium flex items-center gap-1.5">
+                  <Activity className="h-3.5 w-3.5 text-primary/70" />
+                  Therapeutic Area
+                </FormLabel>
+                <div className="relative group transition-all">
+                  <MultiSelect
+                    options={THERAPEUTIC_AREAS.map(({ value, label }) => ({
+                      label,
+                      value,
+                    }))}
+                    defaultValue={field.value ?? []}
+                    onValueChange={field.onChange}
+                    placeholder="Select areas"
+                    maxCount={2}
+                    className="w-full transition-all group-hover:border-primary/50 pr-6"
+                  />
+                </div>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Location, Gender and Age Column */}
+          <div className="col-span-1 md:col-span-2 lg:col-span-2 grid grid-cols-2 md:grid-cols-1 gap-2.5">
+            {/* Location */}
+            <FormField
+              control={form.control}
+              name="location"
+              render={({ field }) => (
+                <FormItem className="mb-0">
+                  <FormLabel className="text-sm font-medium flex items-center gap-1.5">
+                    <MapPin className="h-3.5 w-3.5 text-primary/70" />
+                    Location
+                  </FormLabel>
+                  <div className="relative group transition-all">
+                    <FormControl>
+                      <Input 
+                        placeholder="City, State, Country" 
+                        {...field} 
+                        className="transition-all group-hover:border-primary/50"
+                      />
+                    </FormControl>
+                  </div>
+                </FormItem>
+              )}
+            />
+
+            {/* Gender and Age in a row on mobile */}
+            <div className="grid grid-cols-1">
+              {/* Gender */}
+              <FormField
+                control={form.control}
+                name="gender"
+                render={({ field }) => (
+                  <FormItem className="mb-1.5">
+                    <FormLabel className="text-sm font-medium flex items-center gap-1.5">
+                      <Users className="h-3.5 w-3.5 text-primary/70" />
+                      Gender
+                    </FormLabel>
+                    <div className="relative group transition-all">
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="transition-all group-hover:border-primary/50">
+                            <SelectValue placeholder="Select gender" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="ALL">All</SelectItem>
+                          <SelectItem value="FEMALE">Female</SelectItem>
+                          <SelectItem value="MALE">Male</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </FormItem>
+                )}
+              />
+
+              {/* Age Range */}
+              <FormItem className="mb-0">
+                <FormLabel className="text-sm font-medium flex items-center gap-1.5">
+                  <Calendar className="h-3.5 w-3.5 text-primary/70" />
+                  Age
+                </FormLabel>
+                <AgeRangeInput
+                  minValue={form.watch("minAge") ?? ""}
+                  maxValue={form.watch("maxAge") ?? ""}
+                  onMinChange={(value) => form.setValue("minAge", value)}
+                  onMaxChange={(value) => form.setValue("maxAge", value)}
+                  minPlaceholder="Min"
+                  maxPlaceholder="Max"
                 />
-                <FormMessage />
               </FormItem>
-            )}
-          />
-
-          {/* Location */}
-          <FormField
-            control={form.control}
-            name="location"
-            render={({ field }) => (
-              <FormItem className="mb-4">
-                <FormLabel className="text-base font-medium">Location</FormLabel>
-                <FormControl>
-                  <Input placeholder="City, State, or Country" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          {/* Gender */}
-          <FormField
-            control={form.control}
-            name="gender"
-            render={({ field }) => (
-              <FormItem className="mb-4">
-                <FormLabel className="text-base font-medium">Gender</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select gender" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="ALL">All</SelectItem>
-                    <SelectItem value="FEMALE">Female</SelectItem>
-                    <SelectItem value="MALE">Male</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          {/* Age Range */}
-          <FormItem className="mb-4">
-            <FormLabel className="text-base font-medium">Age Range</FormLabel>
-            <div className="grid grid-cols-2 gap-2">
-              <FormField
-                control={form.control}
-                name="minAge"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormControl>
-                      <Input placeholder="Min" type="number" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="maxAge"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormControl>
-                      <Input placeholder="Max" type="number" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
             </div>
-          </FormItem>
-
-          {/* Sort By */}
-          <div className="col-span-1 sm:col-span-2 grid sm:grid-cols-2 gap-2">
+          </div>
+          
+          {/* Sort Options and Toggles Row */}
+          <div className="col-span-1 md:col-span-12 lg:col-span-12 grid grid-cols-12 gap-2 mt-1">
+            {/* Sort By */}
             <FormField
               control={form.control}
               name="sortField"
               render={({ field }) => (
-                <FormItem className="mb-4">
-                  <FormLabel className="text-base font-medium">Sort By</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sort by" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value={SortField.LAST_UPDATE_POST_DATE}>
-                        Last Updated
-                      </SelectItem>
-                      <SelectItem value={SortField.ENROLLMENT_COUNT}>
-                        Enrollment
-                      </SelectItem>
-                      <SelectItem value={SortField.STUDY_FIRST_POST_DATE}>
-                        First Posted
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
+                <FormItem className="col-span-8 md:col-span-3">
+                  <FormLabel className="text-sm font-medium flex items-center gap-1.5">
+                    <List className="h-3.5 w-3.5 text-primary/70" />
+                    Sort By
+                  </FormLabel>
+                  <div className="relative group transition-all">
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="transition-all group-hover:border-primary/50">
+                          <SelectValue placeholder="Sort by" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value={SortField.LAST_UPDATE_POST_DATE}>
+                          Last Updated
+                        </SelectItem>
+                        <SelectItem value={SortField.ENROLLMENT_COUNT}>
+                          Enrollment
+                        </SelectItem>
+                        <SelectItem value={SortField.STUDY_FIRST_POST_DATE}>
+                          First Posted
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </FormItem>
               )}
             />
 
+            {/* Sort Direction - Icon Only */}
             <FormField
               control={form.control}
               name="sortDirection"
               render={({ field }) => (
-                <FormItem className="mb-4">
-                  <FormLabel className="text-base font-medium">Direction</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
+                <FormItem className="col-span-4 md:col-span-1">
+                  <FormLabel className="text-sm font-medium flex items-center gap-1.5 opacity-0">
+                    Dir
+                  </FormLabel>
+                  <div className="relative group transition-all">
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="transition-all group-hover:border-primary/50 px-2">
+                          {field.value === SortDirection.DESC ? (
+                            <ArrowDown className="h-4 w-4" />
+                          ) : (
+                            <ArrowUp className="h-4 w-4" />
+                          )}
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value={SortDirection.DESC}>
+                          <div className="flex items-center">
+                            <ArrowDown className="mr-2 h-3.5 w-3.5" />
+                            Descending
+                          </div>
+                        </SelectItem>
+                        <SelectItem value={SortDirection.ASC}>
+                          <div className="flex items-center">
+                            <ArrowUp className="mr-2 h-3.5 w-3.5" />
+                            Ascending
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </FormItem>
+              )}
+            />
+
+            {/* Healthy Volunteers */}
+            <FormField
+              control={form.control}
+              name="healthyVolunteers"
+              render={({ field }) => (
+                <FormItem className="col-span-7 md:col-span-3 flex items-end mt-1 md:mt-0">
+                  <FormControl>
+                    <ToggleCheckbox
+                      checked={field.value}
+                      onChange={field.onChange}
+                      label="Healthy volunteers only"
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            {/* Bookmark Toggle */}
+            <FormField
+              control={form.control}
+              name="showBookmarksOnly"
+              render={({ field }) => (
+                <FormItem className="col-span-12 md:col-span-5 flex justify-center md:justify-end items-end mt-2 md:mt-0">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => field.onChange(!field.value)}
+                    className={cn(
+                      "w-full md:w-auto h-9 gap-2 transition-all duration-200",
+                      field.value
+                        ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                        : "hover:bg-accent hover:text-accent-foreground hover:shadow-sm"
+                    )}
+                    size="sm"
                   >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sort direction" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value={SortDirection.DESC}>
-                        <div className="flex items-center">
-                          <ArrowDown className="mr-2 h-4 w-4" />
-                          Descending
-                        </div>
-                      </SelectItem>
-                      <SelectItem value={SortDirection.ASC}>
-                        <div className="flex items-center">
-                          <ArrowUp className="mr-2 h-4 w-4" />
-                          Ascending
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
+                    <Bookmark
+                      className={cn(
+                        "h-4 w-4 transition-transform duration-200",
+                        field.value ? "fill-primary-foreground" : ""
+                      )}
+                    />
+                    {field.value ? "Showing My Bookmarks" : "Show My Bookmarks"}
+                  </Button>
                 </FormItem>
               )}
             />
           </div>
-
-          {/* Healthy Volunteers */}
-          <FormField
-            control={form.control}
-            name="healthyVolunteers"
-            render={({ field }) => (
-              <FormItem className="flex flex-row items-center space-x-2 space-y-0">
-                <FormControl>
-                  <Checkbox
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                </FormControl>
-                <FormLabel className="text-sm font-normal">
-                  Healthy volunteers only
-                </FormLabel>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          {/* Bookmarks Filter Toggle */}
-          <FormField
-            control={form.control}
-            name="showBookmarksOnly"
-            render={({ field }) => (
-              <FormItem className="col-span-1 sm:col-span-2 mt-4">
-                <Button
-                  type="button"
-                  variant={field.value ? "default" : "outline"}
-                  className={`flex items-center gap-2 w-full sm:w-auto h-10 px-4 ${field.value ? "bg-primary text-primary-foreground" : "border-dashed"}`}
-                  onClick={() => {
-                    const newValue = !field.value;
-                    field.onChange(newValue);
-                  }}
-                >
-                  <svg 
-                    xmlns="http://www.w3.org/2000/svg" 
-                    width="20" 
-                    height="20" 
-                    viewBox="0 0 24 24" 
-                    fill={field.value ? "currentColor" : "none"}
-                    stroke="currentColor" 
-                    strokeWidth="2" 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                  >
-                    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
-                  </svg>
-                  <span>
-                    {field.value ? "Showing My Bookmarks" : "Show My Bookmarks"}
-                  </span>
-                </Button>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
         </div>
       </form>
     </Form>
