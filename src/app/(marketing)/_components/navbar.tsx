@@ -20,7 +20,7 @@ import {
 
 export function NavBar(): React.JSX.Element {
   return (
-    <div className="fixed top-0 w-full z-10 bg-background/95 shadow-xl">
+    <div className="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-sm shadow-md">
       <nav className="flex items-center justify-between py-6 px-4 md:px-8 container">
         {/* Logo */}
         <Link href="/" className="flex-shrink-0">
