@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { Search, ChevronRight } from 'lucide-react';
+import { Search, ChevronRight, Check } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -55,6 +55,52 @@ const PreferenceSchema = z.object({
   therapeuticArea: z.array(z.string()).optional(),
 });
 
+const STEPS = [
+  { id: 'phase' as const, label: 'Study Phases' },
+  { id: 'status' as const, label: 'Study Status' },
+  { id: 'therapeuticArea' as const, label: 'Therapeutic Areas' }
+] as const;
+
+type StepId = (typeof STEPS)[number]['id'];
+
+function ProgressBar({ currentStep, completedSteps }: { currentStep: StepId; completedSteps: Set<string> }) {
+  return (
+    <div className="w-full mb-8">
+      <div className="flex justify-between mb-2">
+        {STEPS.map((step, index) => {
+          const isActive = step.id === currentStep;
+          const isCompleted = completedSteps.has(step.id);
+          
+          return (
+            <div key={step.id} className="flex flex-col items-center flex-1">
+              <div className={`
+                flex items-center justify-center w-8 h-8 rounded-full 
+                ${isActive ? 'bg-purple-600 text-white' : 
+                  isCompleted ? 'bg-green-500 text-white' : 
+                  'bg-gray-200 text-gray-600'}
+                mb-2
+              `}>
+                {isCompleted ? <Check size={16} /> : index + 1}
+              </div>
+              <span className={`text-sm ${isActive ? 'text-purple-600 font-medium' : 'text-gray-600'}`}>
+                {step.label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      <div className="relative h-2 bg-gray-200 rounded-full">
+        <div 
+          className="absolute h-full bg-purple-600 rounded-full transition-all duration-300"
+          style={{ 
+            width: `${((STEPS.findIndex(s => s.id === currentStep) + 1) / STEPS.length) * 100}%`
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
 export default function PreferenceModal({
   isOpen,
   onClose,
@@ -69,8 +115,9 @@ export default function PreferenceModal({
   initialPreferences?: Partial<SearchForm>;
 }): React.JSX.Element | null {
   const { user } = useUser();
-  const [activeTab, setActiveTab] = useState('phase');
+  const [activeTab, setActiveTab] = useState<StepId>('phase');
   const [therapeuticAreaSearch, setTherapeuticAreaSearch] = useState('');
+  const [completedSteps, setCompletedSteps] = useState<Set<string>>(new Set());
 
   const form = useForm<Partial<SearchForm>>({
     resolver: zodResolver(PreferenceSchema),
@@ -124,6 +171,28 @@ export default function PreferenceModal({
     );
   };
 
+  const isStepComplete = (stepId: string): boolean => {
+    const values = form.getValues(stepId as keyof Partial<SearchForm>);
+    return Array.isArray(values) && values.length > 0;
+  };
+
+  const handleNext = () => {
+    const currentIndex = STEPS.findIndex(s => s.id === activeTab);
+    if (isStepComplete(activeTab)) {
+      setCompletedSteps(prev => new Set([...prev, activeTab]));
+    }
+    if (currentIndex < STEPS.length - 1) {
+      setActiveTab(STEPS[currentIndex + 1].id);
+    }
+  };
+
+  const handleBack = () => {
+    const currentIndex = STEPS.findIndex(s => s.id === activeTab);
+    if (currentIndex > 0) {
+      setActiveTab(STEPS[currentIndex - 1].id);
+    }
+  };
+
   const onSubmit = (data: Partial<SearchForm>): void => {
     if (!user) {
       return;
@@ -167,6 +236,10 @@ export default function PreferenceModal({
     return null;
   }
 
+  const currentStepIndex = STEPS.findIndex(s => s.id === activeTab);
+  const isLastStep = currentStepIndex === STEPS.length - 1;
+  const isFirstStep = currentStepIndex === 0;
+
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent 
@@ -182,370 +255,311 @@ export default function PreferenceModal({
             Customize your preferences to find the most relevant clinical studies for your needs.
           </DialogDescription>
         </DialogHeader>
-        
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full mt-4">
-          <div className="flex items-center justify-between px-4 py-2 bg-gray-50 dark:bg-gray-900 rounded-lg mb-6">
-            {[
-              { id: 'phase', label: 'Study Phases', color: 'text-purple-600' },
-              { id: 'status', label: 'Study Status', color: 'text-gray-600' },
-              { id: 'therapeuticArea', label: 'Therapeutic Areas', color: 'text-gray-600' }
-            ].map((tab, index, array) => (
-              <React.Fragment key={tab.id}>
-                <div className="relative group">
-                  <button
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`flex flex-col items-start space-y-1 ${
-                      activeTab === tab.id ? tab.color : 'text-gray-600'
-                    }`}
-                  >
-                    <span className={`text-base font-medium ${
-                      activeTab === tab.id ? 'text-purple-600' : 'text-gray-900'
-                    }`}>
-                      {tab.label}
-                    </span>
-                    <Badge 
-                      variant="secondary" 
-                      className={`
-                        text-xs px-2 py-0.5 
-                        ${activeTab === tab.id 
-                          ? 'bg-purple-100 text-purple-600' 
-                          : 'bg-gray-200 text-gray-600'
-                        }
-                      `}
-                    >
-                      {getSelectionCountText(tab.id as keyof Partial<SearchForm>, 
-                        tab.id === 'therapeuticArea' 
-                          ? THERAPEUTIC_AREAS.length 
-                          : Object.keys(tab.id === 'phase' ? phaseDisplayMap : statusDisplayMap).length
-                      )}
-                    </Badge>
-                  </button>
-                  {activeTab === tab.id && (
-                    <div className="absolute bottom-0 left-0 w-full h-0.5 bg-purple-600" />
-                  )}
-                </div>
-                {index < array.length - 1 && (
-                  <ChevronRight className="h-6 w-6 text-gray-400 flex-shrink-0" />
-                )}
-              </React.Fragment>
-            ))}
-          </div>
 
-          <Form {...form}>
-            {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <ScrollArea className="h-[350px] pr-4">
-                <TabsContent value="phase" className="mt-0 space-y-4">
-                  <Card className="border border-gray-200 dark:border-gray-800 shadow-sm">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-                        Study Phases
-                      </CardTitle>
-                      <CardDescription className="text-gray-600 dark:text-gray-400">
-                        Select the clinical trial phases you're interested in.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <FormField
-                        control={form.control}
-                        name="phase"
-                        render={({ field }) => (
-                          <FormItem>
-                            <div className="flex items-center justify-between mb-4">
-                              <Button 
-                                type="button" 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => handleSelectAll(
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <ProgressBar currentStep={activeTab} completedSteps={completedSteps} />
+            
+            <Tabs value={activeTab} onValueChange={setActiveTab as (value: string) => void} className="w-full">
+              <TabsContent value="phase" className="m-0">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Select Study Phases</CardTitle>
+                    <CardDescription>
+                      Choose the clinical trial phases you're interested in.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <FormField
+                      control={form.control}
+                      name="phase"
+                      render={() => (
+                        <FormItem>
+                          <div className="mb-4">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                handleSelectAll(
                                   'phase',
                                   Object.entries(phaseDisplayMap),
-                                  field.value?.length !== Object.keys(phaseDisplayMap).length
-                                )}
-                              >
-                                {field.value?.length === Object.keys(phaseDisplayMap).length
-                                  ? "Deselect All"
-                                  : "Select All"}
-                              </Button>
-                            </div>
-                            <FormControl>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                {Object.entries(phaseDisplayMap).map(
-                                  ([value, label]) => (
-                                    <div key={value} className="flex items-center space-x-2 border p-2 rounded-md hover:bg-muted/50 transition-colors">
-                                      <Checkbox
-                                        id={`phase-${value}`}
-                                        checked={field.value?.includes(value as StudyPhase)}
-                                        onCheckedChange={(checked) =>
-                                          Boolean(checked)
-                                            ? field.onChange([
-                                                ...(field.value ?? []),
-                                                value as StudyPhase,
-                                              ])
-                                            : field.onChange(
-                                                field.value?.filter((v) => v !== (value as StudyPhase))
-                                              )
-                                        }
-                                      />
-                                      <label 
-                                        htmlFor={`phase-${value}`}
-                                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
-                                      >
+                                  !Object.keys(phaseDisplayMap).every((phase) =>
+                                    form.getValues('phase')?.includes(phase as StudyPhase)
+                                  )
+                                )
+                              }
+                            >
+                              Select All
+                            </Button>
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            {(Object.entries(phaseDisplayMap) as Array<[StudyPhase, string]>).map(([value, label]) => (
+                              <FormField
+                                key={value}
+                                control={form.control}
+                                name="phase"
+                                render={({ field }) => {
+                                  return (
+                                    <FormItem
+                                      key={value}
+                                      className="flex flex-row items-start space-x-3 space-y-0"
+                                    >
+                                      <FormControl>
+                                        <Checkbox
+                                          checked={field.value?.includes(value)}
+                                          onCheckedChange={(checked) => {
+                                            const values = field.value || [];
+                                            return checked
+                                              ? field.onChange([...values, value])
+                                              : field.onChange(
+                                                  values.filter((val) => val !== value)
+                                                );
+                                          }}
+                                        />
+                                      </FormControl>
+                                      <label className="font-normal cursor-pointer">
                                         {label}
                                       </label>
-                                    </div>
-                                  )
-                                )}
-                              </div>
-                            </FormControl>
-                            <div className="mt-4 flex flex-wrap gap-2">
-                              {field.value?.map((selectedValue) => (
-                                <Badge
-                                  key={selectedValue}
-                                  variant="secondary"
-                                  className="flex items-center gap-1 py-1"
-                                >
-                                  {phaseDisplayMap[selectedValue]}
-                                  <button
-                                    type="button"
-                                    className="ml-1 hover:bg-muted rounded-full h-4 w-4 inline-flex items-center justify-center"
-                                    onClick={() =>
-                                      handleRemoveSelected('phase', selectedValue)
-                                    }
-                                  >
-                                    ✕
-                                  </button>
-                                </Badge>
-                              ))}
-                            </div>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </CardContent>
-                  </Card>
-                </TabsContent>
+                                    </FormItem>
+                                  );
+                                }}
+                              />
+                            ))}
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-                <TabsContent value="status" className="mt-0 space-y-4">
-                  <Card className="border border-gray-200 dark:border-gray-800 shadow-sm">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-                        Study Status
-                      </CardTitle>
-                      <CardDescription className="text-gray-600 dark:text-gray-400">
-                        Select the study statuses you're interested in.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <FormField
-                        control={form.control}
-                        name="status"
-                        render={({ field }) => (
-                          <FormItem>
-                            <div className="flex items-center justify-between mb-4">
-                              <Button 
-                                type="button" 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => handleSelectAll(
+              <TabsContent value="status" className="m-0">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Select Study Status</CardTitle>
+                    <CardDescription>
+                      Choose the status of clinical trials you want to follow.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <FormField
+                      control={form.control}
+                      name="status"
+                      render={() => (
+                        <FormItem>
+                          <div className="mb-4">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                handleSelectAll(
                                   'status',
                                   Object.entries(statusDisplayMap),
-                                  field.value?.length !== Object.keys(statusDisplayMap).length
-                                )}
-                              >
-                                {field.value?.length === Object.keys(statusDisplayMap).length
-                                  ? "Deselect All"
-                                  : "Select All"}
-                              </Button>
-                            </div>
-                            <FormControl>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                {Object.entries(statusDisplayMap).map(
-                                  ([value, label]) => (
-                                    <div key={value} className="flex items-center space-x-2 border p-2 rounded-md hover:bg-muted/50 transition-colors">
-                                      <Checkbox
-                                        id={`status-${value}`}
-                                        checked={field.value?.includes(value as StudyStatus)}
-                                        onCheckedChange={(checked) =>
-                                          Boolean(checked)
-                                            ? field.onChange([
-                                                ...(field.value ?? []),
-                                                value as StudyStatus,
-                                              ])
-                                            : field.onChange(
-                                                field.value?.filter((v) => v !== (value as StudyStatus))
-                                              )
-                                        }
-                                      />
-                                      <label 
-                                        htmlFor={`status-${value}`}
-                                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
-                                      >
+                                  !Object.keys(statusDisplayMap).every((status) =>
+                                    form.getValues('status')?.includes(status as StudyStatus)
+                                  )
+                                )
+                              }
+                            >
+                              Select All
+                            </Button>
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            {(Object.entries(statusDisplayMap) as Array<[StudyStatus, string]>).map(([value, label]) => (
+                              <FormField
+                                key={value}
+                                control={form.control}
+                                name="status"
+                                render={({ field }) => {
+                                  return (
+                                    <FormItem
+                                      key={value}
+                                      className="flex flex-row items-start space-x-3 space-y-0"
+                                    >
+                                      <FormControl>
+                                        <Checkbox
+                                          checked={field.value?.includes(value)}
+                                          onCheckedChange={(checked) => {
+                                            const values = field.value || [];
+                                            return checked
+                                              ? field.onChange([...values, value])
+                                              : field.onChange(
+                                                  values.filter((val) => val !== value)
+                                                );
+                                          }}
+                                        />
+                                      </FormControl>
+                                      <label className="font-normal cursor-pointer">
                                         {label}
                                       </label>
-                                    </div>
-                                  )
-                                )}
-                              </div>
-                            </FormControl>
-                            <div className="mt-4 flex flex-wrap gap-2">
-                              {field.value?.map((selectedValue) => (
-                                <Badge
-                                  key={selectedValue}
-                                  variant="secondary"
-                                  className="flex items-center gap-1 py-1"
-                                >
-                                  {statusDisplayMap[selectedValue]}
-                                  <button
-                                    type="button"
-                                    className="ml-1 hover:bg-muted rounded-full h-4 w-4 inline-flex items-center justify-center"
-                                    onClick={() =>
-                                      handleRemoveSelected('status', selectedValue)
-                                    }
-                                  >
-                                    ✕
-                                  </button>
-                                </Badge>
-                              ))}
-                            </div>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </CardContent>
-                  </Card>
-                </TabsContent>
+                                    </FormItem>
+                                  );
+                                }}
+                              />
+                            ))}
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-                <TabsContent value="therapeuticArea" className="mt-0 space-y-4">
-                  <Card className="border border-gray-200 dark:border-gray-800 shadow-sm">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-                        Therapeutic Areas
-                      </CardTitle>
-                      <CardDescription className="text-gray-600 dark:text-gray-400">
-                        Select the therapeutic areas you're interested in.
-                      </CardDescription>
-                      <div className="relative mt-2">
-                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <TabsContent value="therapeuticArea" className="m-0">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Select Therapeutic Areas</CardTitle>
+                    <CardDescription>
+                      Choose the therapeutic areas you're interested in.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="flex items-center space-x-2">
+                        <Search className="w-4 h-4 text-gray-500" />
                         <Input
+                          type="text"
                           placeholder="Search therapeutic areas..."
-                          className="pl-8"
                           value={therapeuticAreaSearch}
                           onChange={(e) => setTherapeuticAreaSearch(e.target.value)}
+                          className="flex-1"
                         />
                       </div>
-                    </CardHeader>
-                    <CardContent>
-                      <FormField
-                        control={form.control}
-                        name="therapeuticArea"
-                        render={({ field }) => (
-                          <FormItem>
-                            <div className="flex items-center justify-between mb-4">
-                              <Button 
-                                type="button" 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => handleSelectAll(
-                                  'therapeuticArea',
-                                  THERAPEUTIC_AREAS,
-                                  field.value?.length !== THERAPEUTIC_AREAS.length
-                                )}
-                              >
-                                {field.value?.length === THERAPEUTIC_AREAS.length
-                                  ? "Deselect All"
-                                  : "Select All"}
-                              </Button>
-                            </div>
-                            <FormControl>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                {filteredTherapeuticAreas.map(
-                                  ({ value, label }) => (
-                                    <div key={value} className="flex items-center space-x-2 border p-2 rounded-md hover:bg-muted/50 transition-colors">
-                                      <Checkbox
-                                        id={`ta-${value}`}
-                                        checked={field.value?.includes(value)}
-                                        onCheckedChange={(checked) =>
-                                          Boolean(checked)
-                                            ? field.onChange([
-                                                ...(field.value ?? []),
-                                                value,
-                                              ])
-                                            : field.onChange(
-                                                field.value?.filter((v) => v !== value)
-                                              )
-                                        }
-                                      />
-                                      <label 
-                                        htmlFor={`ta-${value}`}
-                                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
-                                      >
-                                        {label}
-                                      </label>
-                                    </div>
-                                  )
-                                )}
-                                {filteredTherapeuticAreas.length === 0 && (
-                                  <div className="col-span-2 text-center py-4 text-muted-foreground">
-                                    No therapeutic areas found matching your search.
-                                  </div>
-                                )}
-                              </div>
-                            </FormControl>
-                            <div className="mt-4 flex flex-wrap gap-2">
-                              {field.value?.map((selectedValue) => {
-                                const areaLabel = THERAPEUTIC_AREAS.find(
-                                  (area) => area.value === selectedValue
-                                )?.label || selectedValue;
-                                return (
-                                  <Badge
-                                    key={selectedValue}
-                                    variant="secondary"
-                                    className="flex items-center gap-1 py-1"
-                                  >
-                                    {areaLabel}
-                                    <button
-                                      type="button"
-                                      className="ml-1 hover:bg-muted rounded-full h-4 w-4 inline-flex items-center justify-center"
-                                      onClick={() =>
-                                        handleRemoveSelected('therapeuticArea', selectedValue)
-                                      }
-                                    >
-                                      ✕
-                                    </button>
-                                  </Badge>
-                                );
-                              })}
-                            </div>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-              </ScrollArea>
 
-              <DialogFooter className="flex justify-between sm:justify-between pt-4 border-t">
-                {!forceOpen && (
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={handleClose}
-                    className="border hover:bg-gray-50"
+                      <div className="mb-4">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            handleSelectAll(
+                              'therapeuticArea',
+                              THERAPEUTIC_AREAS,
+                              !THERAPEUTIC_AREAS.every((area) =>
+                                form
+                                  .getValues('therapeuticArea')
+                                  ?.includes(area.value)
+                              )
+                            )
+                          }
+                        >
+                          Select All
+                        </Button>
+                      </div>
+
+                      <ScrollArea className="h-[300px] rounded-md border p-4">
+                        <FormField
+                          control={form.control}
+                          name="therapeuticArea"
+                          render={() => (
+                            <FormItem>
+                              <div className="grid grid-cols-2 gap-4">
+                                {filteredTherapeuticAreas.map((area) => (
+                                  <FormField
+                                    key={area.value}
+                                    control={form.control}
+                                    name="therapeuticArea"
+                                    render={({ field }) => {
+                                      return (
+                                        <FormItem
+                                          key={area.value}
+                                          className="flex flex-row items-start space-x-3 space-y-0"
+                                        >
+                                          <FormControl>
+                                            <Checkbox
+                                              checked={field.value?.includes(
+                                                area.value
+                                              )}
+                                              onCheckedChange={(checked) => {
+                                                const values = field.value || [];
+                                                return checked
+                                                  ? field.onChange([
+                                                      ...values,
+                                                      area.value,
+                                                    ])
+                                                  : field.onChange(
+                                                      values.filter(
+                                                        (val) => val !== area.value
+                                                      )
+                                                    );
+                                              }}
+                                            />
+                                          </FormControl>
+                                          <label className="font-normal cursor-pointer">
+                                            {area.label}
+                                          </label>
+                                        </FormItem>
+                                      );
+                                    }}
+                                  />
+                                ))}
+                              </div>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </ScrollArea>
+
+                      <div className="flex flex-wrap gap-2 mt-4">
+                        {form.getValues('therapeuticArea')?.map((value) => {
+                          const area = THERAPEUTIC_AREAS.find(
+                            (a) => a.value === value
+                          );
+                          return (
+                            <Badge
+                              key={value}
+                              variant="secondary"
+                              className="cursor-pointer"
+                              onClick={() =>
+                                handleRemoveSelected('therapeuticArea', value)
+                              }
+                            >
+                              {area?.label}
+                            </Badge>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+
+            <DialogFooter className="flex justify-between items-center">
+              <div className="flex gap-2">
+                {!isFirstStep && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleBack}
                   >
-                    Cancel
+                    Back
                   </Button>
                 )}
-                <Button 
-                  type="submit" 
-                  className="bg-purple-600 text-white hover:bg-purple-700"
-                >
-                  Save Preferences
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </Tabs>
+                {!isLastStep ? (
+                  <Button
+                    type="button"
+                    onClick={handleNext}
+                    disabled={!isStepComplete(activeTab)}
+                  >
+                    Next
+                  </Button>
+                ) : (
+                  <Button
+                    type="submit"
+                    disabled={!isStepComplete(activeTab)}
+                  >
+                    Save Preferences
+                  </Button>
+                )}
+              </div>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );
