@@ -24,6 +24,7 @@ import {
 import { Study } from '@/types/clinical-trials/study';
 import { SearchForm } from '@/types/common/form';
 import { useLocalBookmarks } from '@/hooks/bookmarks/use-local-bookmarks';
+import { createUser } from '@/lib/api/users';
 
 import { exportStudiesToCSV } from '../../../lib/utils/export-studies-to-csv';
 
@@ -83,7 +84,6 @@ export default function ClinicalTrialsSearch(): React.JSX.Element {
   const loadPreferencesFromLocalStorage = React.useCallback(() => {
     if (!user?.id || preferencesCheckedRef.current) return false;
     
-    console.log("[DEBUG] Loading preferences from localStorage for", user.id);
     preferencesCheckedRef.current = true;
     
     // Check localStorage for preferences
@@ -93,7 +93,6 @@ export default function ClinicalTrialsSearch(): React.JSX.Element {
       const cachedPrefs = localStorage.getItem(localPrefKey);
       if (cachedPrefs) {
         const parsedPrefs = JSON.parse(cachedPrefs);
-        console.log("[DEBUG] Found cached preferences in localStorage:", parsedPrefs);
         
         // Apply cached preferences immediately
         setFormData({
@@ -111,7 +110,8 @@ export default function ClinicalTrialsSearch(): React.JSX.Element {
         return true;
       }
     } catch (e) {
-      console.error("[DEBUG] Error reading cached preferences:", e);
+      // Silently handle error and return false
+      return false;
     }
     
     return false;
@@ -122,7 +122,6 @@ export default function ClinicalTrialsSearch(): React.JSX.Element {
     // Run this code only once on component mount
     const checkForceReload = () => {
       if (typeof window !== 'undefined' && localStorage.getItem('force_preferences_reload') === 'true') {
-        console.log("[DEBUG] Found force_preferences_reload flag on mount");
         localStorage.removeItem('force_preferences_reload');
         
         if (user?.id) {
@@ -132,7 +131,6 @@ export default function ClinicalTrialsSearch(): React.JSX.Element {
             const cachedPrefs = localStorage.getItem(localPrefKey);
             if (cachedPrefs) {
               const parsedPrefs = JSON.parse(cachedPrefs);
-              console.log("[DEBUG] Applying cached preferences on mount:", parsedPrefs);
               
               // Apply cached preferences immediately and force a refresh
               setTimeout(() => {
@@ -151,7 +149,7 @@ export default function ClinicalTrialsSearch(): React.JSX.Element {
               }, 0);
             }
           } catch (e) {
-            console.error("[DEBUG] Error processing cached preferences on mount:", e);
+            console.error("Error processing cached preferences on mount:", e);
           }
         }
       }
@@ -170,12 +168,9 @@ export default function ClinicalTrialsSearch(): React.JSX.Element {
   // Force load from localStorage if we detect a refresh parameter
   useEffect(() => {
     if ((isRefresh || localStorage.getItem('force_preferences_reload') === 'true') && user?.id) {
-      console.log("[DEBUG] Detected refresh trigger, forcing preferences refresh");
-      
       // Clear the force reload flag if it exists
       if (localStorage.getItem('force_preferences_reload') === 'true') {
         localStorage.removeItem('force_preferences_reload');
-        console.log("[DEBUG] Cleared force_preferences_reload flag");
       }
       
       // Reset the check flag so we can load again
@@ -186,7 +181,6 @@ export default function ClinicalTrialsSearch(): React.JSX.Element {
       
       // Force a refresh of the query if localStorage was found
       if (loaded && user.id) {
-        console.log("[DEBUG] Force refreshing user preferences query");
         void queryClient.invalidateQueries({
           queryKey: ['userPreferences', user.id],
         });
@@ -202,57 +196,63 @@ export default function ClinicalTrialsSearch(): React.JSX.Element {
     }
   }, [isRefresh, user?.id, loadPreferencesFromLocalStorage, queryClient]);
 
-  // Add debug logging for initial state
+  // Handle user preferences
   useEffect(() => {
-    console.log("[DEBUG] Initial state:", {
-      isLoadingPreferences,
-      hasUserPreferences: !!userPreferences,
-      userHasLoaded: !!user,
-      currentFormData: formData
-    });
-  }, [isLoadingPreferences, userPreferences, user, formData]);
-  
-  // Initialize form data from API preferences
-  useEffect(() => {
-    console.log("[DEBUG] Loading preferences state:", {
-      isLoadingPreferences,
-      userPreferences,
-      userId: user?.id
-    });
-    
-    if (isLoadingPreferences) {
-      return;
-    }
+    if (!isLoaded || !user) return;
 
-    if (userPreferences) {
-      console.log("[DEBUG] Found user preferences, updating form data:", userPreferences);
-      setIsModalOpen(false);
+    // Check if we have valid preferences with actual selections
+    const hasValidPreferences = Boolean(
+      userPreferences?.phase?.length ||
+      userPreferences?.status?.length ||
+      userPreferences?.therapeuticArea?.length
+    );
+
+    if (hasValidPreferences) {
       setFormData({
-        searchTerm: '',
-        phase: userPreferences.phase ? 
-          userPreferences.phase.map(p => typeof p === 'string' ? p as StudyPhase : p) : 
-          [],
-        status: userPreferences.status ? 
-          userPreferences.status.map(s => typeof s === 'string' ? s as StudyStatus : s) : 
-          [],
-        location: 'United States',
-        therapeuticArea: userPreferences.therapeuticArea ?? [],
-        sortField: SortField.LAST_UPDATE_POST_DATE,
-        sortDirection: SortDirection.DESC,
-        minAge: '1',
-        maxAge: '100',
-        gender: Sex.ALL,
-        healthyVolunteers: false,
-        showBookmarksOnly: false,
+        ...DEFAULT_FORM_VALUES,
+        phase: userPreferences?.phase?.map((p: string | StudyPhase) => typeof p === 'string' ? p as StudyPhase : p) ?? [],
+        status: userPreferences?.status?.map((s: string | StudyStatus) => typeof s === 'string' ? s as StudyStatus : s) ?? [],
+        therapeuticArea: userPreferences?.therapeuticArea ?? [],
       });
-    } else if (!preferencesLoaded) {
-      console.log("[DEBUG] No user preferences found, showing modal");
-      // Always trigger a search with default values even if showing the modal
-      // This ensures studies are visible in the background
-      setFormData({...DEFAULT_FORM_VALUES});
-      setIsModalOpen(true); // Show modal only when preferences are absent
+      setPreferencesLoaded(true);
+      setIsNewUser(false);
+      setIsModalOpen(false);
+    } else if (!isLoadingPreferences) {
+      // No valid preferences found and done loading - show modal
+      setIsNewUser(true);
+      setIsModalOpen(true);
+      setPreferencesLoaded(false);
     }
-  }, [userPreferences, isLoadingPreferences, user?.id, preferencesLoaded]);
+  }, [isLoaded, user, userPreferences, isLoadingPreferences]);
+
+  // Handle saving preferences
+  const handleSavePreferences = (preferences: Partial<SearchForm>) => {
+    if (!user?.id) return;
+
+    // Save preferences
+    savePreferences(
+      {
+        userId: user.id,
+        preferences: {
+          phase: preferences.phase,
+          status: preferences.status,
+          therapeuticArea: preferences.therapeuticArea,
+        },
+      },
+      {
+        onSuccess: () => {
+          setIsNewUser(false);
+        },
+      }
+    );
+
+    // Update form data with defaults for missing fields
+    setFormData({
+      ...DEFAULT_FORM_VALUES,
+      ...preferences
+    });
+    setIsModalOpen(false);
+  };
 
   // Fetch clinical trials based on form data
   const {
@@ -264,16 +264,6 @@ export default function ClinicalTrialsSearch(): React.JSX.Element {
     isFetchingNextPage,
   } = useStudiesInfiniteQuery(formData);
 
-  // Add debug logging for data fetching
-  useEffect(() => {
-    console.log("[DEBUG] Studies query state:", {
-      isLoadingStudies,
-      hasData: !!data,
-      studiesCount: data?.pages?.[0]?.studies?.length || 0,
-      error: error?.message
-    });
-  }, [data, isLoadingStudies, error]);
-
   // Filter studies based on bookmarks if showBookmarksOnly is true
   const studies: Study[] = React.useMemo(() => {
     const allStudies = data?.pages.flatMap((page) => page.studies) ?? [];
@@ -284,11 +274,8 @@ export default function ClinicalTrialsSearch(): React.JSX.Element {
     
     // Use local bookmarks for filtering
     if (localBookmarks.length === 0) {
-      console.log("[BOOKMARKS] No bookmarks found for filtering");
       return [];
     }
-    
-    console.log(`[BOOKMARKS] Filtering ${allStudies.length} studies with ${localBookmarks.length} bookmarks`);
     
     // Create a Set of bookmarked NCT IDs for faster lookup
     const bookmarkedNctIds = new Set(
@@ -301,7 +288,6 @@ export default function ClinicalTrialsSearch(): React.JSX.Element {
       return bookmarkedNctIds.has(nctId);
     });
     
-    console.log(`[BOOKMARKS] Found ${filteredStudies.length} matching studies after filtering`);
     return filteredStudies;
   }, [data?.pages, formData.showBookmarksOnly, localBookmarks]);
 
@@ -313,43 +299,6 @@ export default function ClinicalTrialsSearch(): React.JSX.Element {
       router.push('/'); // Redirect to the login page
     }
   }, [user, isLoaded, router]);
-
-  // Force show modal for new users
-  useEffect(() => {
-    if (user && isLoaded && !isLoadingPreferences) {
-      console.log("[DEBUG] User login check for modal:", {
-        userId: user.id,
-        hasUserPreferences: !!userPreferences,
-        isModalOpen
-      });
-      
-      // If we have a user, they're loaded, and preferences aren't loading,
-      // but we don't have preferences - they're a new user
-      if (!userPreferences) {
-        console.log("[DEBUG] New user detected, forcing modal open");
-        setIsNewUser(true);
-        setIsModalOpen(true);
-      }
-    }
-  }, [user, isLoaded, userPreferences, isLoadingPreferences, isModalOpen]);
-
-  const handleSavePreferences = (newPreferences: Partial<SearchForm>): void => {
-    console.log('[DEBUG] Saving preferences for user:', user?.id);
-    savePreferences({ userId: user?.id ?? '', preferences: newPreferences });
-    
-    setFormData({
-      ...formData,
-      ...newPreferences,
-    });
-    
-    // Reset new user flag after preferences are saved
-    if (isNewUser) {
-      console.log('[DEBUG] Resetting new user flag after saving preferences');
-      setIsNewUser(false);
-    }
-    
-    setIsModalOpen(false);
-  };
 
   // Combined loading state for studies and bookmarks
   // Fix: Don't keep loading if we have localBookmarks or if bookmarks API returned empty
@@ -364,7 +313,6 @@ export default function ClinicalTrialsSearch(): React.JSX.Element {
   const toggleBookmarksFilter = (showBookmarks: boolean) => {
     // If turning on bookmarks filter, check if we have bookmarks first
     if (showBookmarks && localBookmarks.length === 0) {
-      console.log("[BOOKMARKS] No bookmarks found when trying to filter");
       alert("You don't have any bookmarks yet. Bookmark some studies first to use this filter.");
       return;
     }
@@ -391,42 +339,35 @@ export default function ClinicalTrialsSearch(): React.JSX.Element {
     <div className="container mx-auto px-2 md:px-6 py-4 max-w-7xl">
       <PreferenceModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSave={handleSavePreferences}
+        onClose={() => {
+          if (!isNewUser) {
+            setIsModalOpen(false);
+          }
+        }}
+        onSave={(preferences) => {
+          handleSavePreferences(preferences);
+          if (preferences.phase?.length || preferences.status?.length || preferences.therapeuticArea?.length) {
+            setIsModalOpen(false);
+            setIsNewUser(false);
+          }
+        }}
         forceOpen={isNewUser}
       />
+
       <div className="space-y-4 md:space-y-6">
         <div className="flex flex-col space-y-2">
           <p className="text-sm md:text-base text-muted-foreground">
             Search through thousands of clinical trials to find relevant studies
           </p>
-          
-          {/* Debug section */}
-          <div className="bg-gray-100 p-4 rounded-md mt-2 text-xs">
-            <h3 className="font-bold">Debug Info:</h3>
-            <p>User ID: {user?.id || 'Not logged in'}</p>
-            <p>Has preferences: {userPreferences ? 'Yes' : 'No'}</p>
-            <p>Loading preferences: {isLoadingPreferences ? 'Yes' : 'No'}</p>
-            <p>Is new user: {isNewUser ? 'Yes' : 'No'}</p>
-            <p>Modal open: {isModalOpen ? 'Yes' : 'No'}</p>
-            <p>Has studies: {studies.length > 0 ? 'Yes' : 'No'}</p>
-            <p>Has bookmarks: {hasBookmarks ? 'Yes' : 'No'}</p>
-            <Button 
-              onClick={() => setIsModalOpen(true)}
-              size="sm"
-              className="mt-2"
-            >
-              Open Preferences Modal
-            </Button>
-          </div>
+
+          <StudiesForm 
+            formData={formData} 
+            setFormData={setFormData}
+            onToggleBookmarks={toggleBookmarksFilter}
+            hasBookmarks={hasBookmarks}
+          />
         </div>
 
-        <StudiesForm 
-          formData={formData} 
-          setFormData={setFormData}
-          onToggleBookmarks={toggleBookmarksFilter}
-          hasBookmarks={hasBookmarks}
-        />
         <div className="flex flex-col md:flex-row gap-2 justify-between items-start md:items-center mt-2">
           <Button
             onClick={() => {
