@@ -50,8 +50,8 @@ export enum SortDirection {
 
 // 5. Update SearchFilters interface with more precise types
 export interface SearchFilters {
-  phase?: StudyPhase[];
-  status?: StudyStatus[];
+  phase?: StudyPhase[] | string[];
+  status?: StudyStatus[] | string[];
   location?: string;
   minAge?: string;
   maxAge?: string;
@@ -67,8 +67,8 @@ export interface SearchFilters {
 // 6. Update schema with more precise validations
 export const SearchFiltersSchema = z
   .object({
-    phase: z.array(z.nativeEnum(StudyPhase)).optional(),
-    status: z.array(z.nativeEnum(StudyStatus)).optional(),
+    phase: z.union([z.array(z.nativeEnum(StudyPhase)), z.array(z.string())]).optional(),
+    status: z.union([z.array(z.nativeEnum(StudyStatus)), z.array(z.string())]).optional(),
     location: z.string().min(1).optional(),
     minAge: z.string().regex(/^\d+$/, 'Age must be a number').optional(),
     maxAge: z.string().regex(/^\d+$/, 'Age must be a number').optional(),

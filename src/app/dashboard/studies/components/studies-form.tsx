@@ -44,11 +44,15 @@ import { SearchFormSchema } from '@/types/common/form';
 const StudiesForm = ({
   formData,
   setFormData,
+  onToggleBookmarks,
+  hasBookmarks,
 }: {
   formData: z.infer<typeof SearchFormSchema>;
   setFormData: React.Dispatch<
     React.SetStateAction<z.infer<typeof SearchFormSchema>>
   >;
+  onToggleBookmarks?: (showBookmarks: boolean) => void;
+  hasBookmarks?: boolean;
 }): React.JSX.Element => {
   const form = useForm<z.infer<typeof SearchFormSchema>>({
     resolver: zodResolver(SearchFormSchema),
@@ -406,22 +410,33 @@ const StudiesForm = ({
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => field.onChange(!field.value)}
+                    disabled={hasBookmarks === false}
+                    onClick={() => {
+                      const newValue = !field.value;
+                      // Update the form field value
+                      field.onChange(newValue);
+                      // Call the parent handler if provided
+                      if (onToggleBookmarks) {
+                        onToggleBookmarks(newValue);
+                      }
+                    }}
                     className={cn(
                       "w-full md:w-auto h-9 gap-2 transition-all duration-200",
-                      field.value
+                      field.value && hasBookmarks !== false
                         ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                        : "hover:bg-accent hover:text-accent-foreground hover:shadow-sm"
+                        : hasBookmarks === false 
+                          ? "opacity-50 cursor-not-allowed" 
+                          : "hover:bg-accent hover:text-accent-foreground hover:shadow-sm"
                     )}
                     size="sm"
                   >
                     <Bookmark
                       className={cn(
                         "h-4 w-4 transition-transform duration-200",
-                        field.value ? "fill-primary-foreground" : ""
+                        field.value && hasBookmarks !== false ? "fill-primary-foreground" : ""
                       )}
                     />
-                    {field.value ? "Showing My Bookmarks" : "Show My Bookmarks"}
+                    {field.value && hasBookmarks !== false ? "Showing My Bookmarks" : "Show My Bookmarks"}
                   </Button>
                 </FormItem>
               )}

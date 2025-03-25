@@ -9,7 +9,7 @@ import {
   Mail,
   Phone,
 } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -20,27 +20,22 @@ import {
   CardTitle,
   CardDescription,
 } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
-import {
-  useCreateBookmarkStudy,
-  useDeleteBookmarkStudy,
-} from '@/hooks/bookmarks/use-bookmarks';
 import { Study } from '@/types/clinical-trials/study';
 
 interface StudyCardProps {
   study: Study;
   onViewDetails: (nctId: string) => void;
-  userId: string; // Pass the userId to handle bookmarks
-  _isBookmarksLoading: boolean; // Optional prop to handle loading state
-  _isBookmarked?: boolean; // Optional prop to handle bookmark state
+  userId: string;
+  _isBookmarksLoading: boolean;
+  _isBookmarked?: boolean;
+  onBookmarkToggle: (nctId: string, title: string, url: string) => void;
 }
 
 const StudyCard = ({
   study,
   onViewDetails,
-  userId,
-  _isBookmarksLoading,
   _isBookmarked,
+  onBookmarkToggle,
 }: StudyCardProps): React.JSX.Element | null => {
   const protocol = study.protocolSection;
   const nctId = protocol?.identificationModule?.nctId ?? '';
@@ -66,43 +61,6 @@ const StudyCard = ({
   const contactEmail = centralContacts[0]?.email;
   const contactPhone = centralContacts[0]?.phone;
   const hasContactInfo = contactEmail || contactPhone;
-  
-  const [isBookmarked, setIsBookmarked] = useState(_isBookmarked);
-
-  const { mutate: createBookmark } = useCreateBookmarkStudy();
-  const { mutate: deleteBookmark } = useDeleteBookmarkStudy();
-
-  const toggleBookmark = (): void => {
-    if (Boolean(isBookmarked)) {
-      deleteBookmark(
-        { nctId, userId },
-        {
-          onSuccess: () => {
-            setIsBookmarked(false);
-          },
-          onError: () => {
-            setIsBookmarked(true);
-          },
-        }
-      );
-    } else {
-      createBookmark(
-        { nctId, userId, title: briefTitle, url: studyUrl },
-        {
-          onSuccess: () => {
-            setIsBookmarked(true);
-          },
-          onError: () => {
-            setIsBookmarked(false);
-          },
-        }
-      );
-    }
-  };
-
-  useEffect(() => {
-    setIsBookmarked(_isBookmarked);
-  }, [_isBookmarked]);
 
   if (!nctId || !briefTitle) {
     return null;
@@ -197,18 +155,15 @@ const StudyCard = ({
         >
           View Details
         </Button>
-        <button onClick={toggleBookmark} className="p-2 flex items-center justify-center h-8 w-8 rounded-md border">
-          {_isBookmarksLoading ? (
-            <Skeleton className="size-5" />
-          ) : (
-            <Bookmark
-              className={`w-4 h-4 ${
-                typeof isBookmarked === 'boolean' && isBookmarked
-                  ? 'text-primary fill-primary'
-                  : 'text-muted-foreground'
-              }`}
-            />
-          )}
+        <button 
+          onClick={() => onBookmarkToggle(nctId, briefTitle, studyUrl)}
+          className={`p-2 flex items-center justify-center h-8 w-8 rounded-md border ${
+            _isBookmarked ? 'bg-primary/10 border-primary' : ''
+          }`}
+        >
+          <Bookmark className={`h-4 w-4 ${
+            _isBookmarked ? 'fill-primary text-primary' : 'text-muted-foreground'
+          }`} />
         </button>
       </div>
     </Card>

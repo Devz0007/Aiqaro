@@ -47,12 +47,21 @@ export default function PreferenceModal({
   isOpen,
   onClose,
   onSave,
+  forceOpen = false
 }: {
   isOpen: boolean;
   onClose: () => void;
   onSave: (newPreferences: Partial<SearchForm>) => void;
+  forceOpen?: boolean;
 }): React.JSX.Element | null {
   const { user } = useUser();
+
+  // Handle close attempts - if forceOpen is true, don't allow closing
+  const handleClose = () => {
+    if (!forceOpen) {
+      onClose();
+    }
+  };
 
   const form = useForm<Partial<SearchForm>>({
     resolver: zodResolver(PreferenceSchema),
@@ -88,8 +97,28 @@ export default function PreferenceModal({
     if (!user) {
       return;
     }
+    
+    // Make sure we're sending non-empty preferences for new users
+    const hasSelections = 
+      (data.phase && data.phase.length > 0) || 
+      (data.status && data.status.length > 0) || 
+      (data.therapeuticArea && data.therapeuticArea.length > 0);
+    
+    if (forceOpen && !hasSelections) {
+      // For new users with forced modal, ensure they select at least one preference
+      // Add default selections for new users
+      console.log("[PREFERENCES MODAL] Adding default preferences for new user");
+      data.phase = ['PHASE1', 'PHASE2', 'PHASE3'] as StudyPhase[];
+      data.status = ['RECRUITING', 'NOT_YET_RECRUITING'] as StudyStatus[];
+    }
+    
+    console.log("[PREFERENCES MODAL] Saving preferences:", data);
     onSave(data);
-    onClose();
+    
+    // Only allow closing if not forceOpen or if user has made selections
+    if (!forceOpen || hasSelections) {
+      onClose();
+    }
   };
 
   if (!user) {
@@ -97,8 +126,8 @@ export default function PreferenceModal({
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent onEscapeKeyDown={(e) => forceOpen && e.preventDefault()} onPointerDownOutside={(e) => forceOpen && e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Set Your Preferences</DialogTitle>
           <DialogDescription>

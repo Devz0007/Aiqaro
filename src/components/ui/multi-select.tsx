@@ -247,16 +247,24 @@ export const MultiSelect = React.forwardRef<
                         <span className="truncate max-w-[100px] md:max-w-full">
                           {option?.label}
                         </span>
-                        <button
-                          type="button"
-                          className="size-5 md:size-4 flex items-center justify-center rounded-full hover:bg-background/20"
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          className="size-5 md:size-4 flex items-center justify-center rounded-full hover:bg-background/20 cursor-pointer"
                           onClick={(event) => {
                             event.stopPropagation();
                             toggleOption(value);
                           }}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              toggleOption(value);
+                            }
+                          }}
                         >
                           <XIcon className="h-3 w-3" />
-                        </button>
+                        </div>
                       </Badge>
                     );
                   })}
@@ -269,25 +277,47 @@ export const MultiSelect = React.forwardRef<
                       )}
                       style={{ animationDuration: `${animation}s` }}
                     >
-                      {`+ ${selectedValues.length - maxCount} more`}
-                      <XCircle
-                        className="ml-2 h-4 w-4 cursor-pointer"
+                      <span>{`+ ${selectedValues.length - maxCount} more`}</span>
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        className="ml-2 flex items-center justify-center cursor-pointer"
                         onClick={(event) => {
                           event.stopPropagation();
                           clearExtraOptions();
                         }}
-                      />
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            clearExtraOptions();
+                          }
+                        }}
+                      >
+                        <XCircle className="h-4 w-4" />
+                      </div>
                     </Badge>
                   )}
                 </div>
                 <div className="flex items-center justify-between min-w-[60px] absolute right-0 top-0 bottom-0">
-                  <XIcon
+                  <div
+                    role="button"
+                    tabIndex={0}
                     className="h-4 mx-1 cursor-pointer text-muted-foreground"
                     onClick={(event) => {
                       event.stopPropagation();
                       handleClear();
                     }}
-                  />
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        handleClear();
+                      }
+                    }}
+                  >
+                    <XIcon className="h-4 w-4" />
+                  </div>
                   <Separator
                     orientation="vertical"
                     className="flex min-h-6 h-full"

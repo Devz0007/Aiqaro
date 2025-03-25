@@ -1,6 +1,6 @@
 "use client"; // Mark this file as a Client Component
 
-import { SignedIn, SignedOut } from '@clerk/nextjs';
+import { SignedIn, SignedOut, useUser } from '@clerk/nextjs';
 import { ArrowRightIcon } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -32,6 +32,36 @@ export default function HomePage(): React.JSX.Element {
   const scrollY = useParallax();
   const dashboardRef = useRef<HTMLDivElement>(null);
   const featuresRef = useRef<HTMLDivElement>(null);
+  const { user } = useUser();
+  
+  // Function to pre-cache preferences
+  const preCacheUserPreferences = () => {
+    if (user?.id) {
+      console.log('[Homepage] Pre-caching preferences for user:', user.id);
+      
+      // Use fetch directly to get fresh data
+      return fetch(`/api/preferences/${user.id}`)
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data) {
+            // Cache data with current timestamp
+            localStorage.setItem(`user_preferences_${user.id}`, JSON.stringify(data));
+            localStorage.setItem(`preferences_last_loaded_${user.id}`, Date.now().toString());
+            console.log('[Homepage] Preferences pre-cached for navigation');
+            
+            // Set a flag to force reload on dashboard
+            localStorage.setItem('force_preferences_reload', 'true');
+            return true;
+          }
+          return false;
+        })
+        .catch(err => {
+          console.error("Error pre-caching preferences:", err);
+          return false;
+        });
+    }
+    return Promise.resolve(false);
+  };
   
   return (
     <>
@@ -77,7 +107,16 @@ export default function HomePage(): React.JSX.Element {
             }}
           >
             <SignedIn>
-              <Link href="/dashboard/studies">
+              <Link 
+                href={`/dashboard/studies?refresh=true&t=${Date.now()}`}
+                onClick={(e) => {
+                  e.preventDefault(); // Prevent default navigation
+                  preCacheUserPreferences().then(() => {
+                    // Navigate after preferences are cached
+                    window.location.href = `/dashboard/studies?refresh=true&t=${Date.now()}`;
+                  });
+                }}
+              >
                 <Button className="text-lg p-5 rounded-xl flex gap-2">
                   Check it out <ArrowRightIcon className="size-5" />
                 </Button>
