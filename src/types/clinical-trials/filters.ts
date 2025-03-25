@@ -125,16 +125,218 @@ export const statusDisplayMap: Readonly<Record<StudyStatus, string>> = {
   [StudyStatus.UNKNOWN]: 'Unknown',
 };
 
-// 8. Update therapeutic areas with more type safety
-export const THERAPEUTIC_AREAS = [
-  { value: 'oncology', label: 'Oncology' },
-  { value: 'cardiology', label: 'Cardiology' },
-  { value: 'neurology', label: 'Neurology' },
-  { value: 'immunology', label: 'Immunology' },
-  { value: 'infectious_diseases', label: 'Infectious Diseases' },
-  { value: 'rare_diseases', label: 'Rare Diseases' },
-  { value: 'pediatrics', label: 'Pediatrics' },
-  { value: 'metabolic', label: 'Metabolic Disorders' },
+// Define the therapeutic area type
+export interface TherapeuticAreaData {
+  value: string;
+  label: string;
+  keywords: string[];
+}
+
+// Update therapeutic areas with more type safety and improved keyword matching
+export const THERAPEUTIC_AREAS: TherapeuticAreaData[] = [
+  { 
+    value: 'oncology',
+    label: 'Oncology',
+    keywords: [
+      'cancer', 'tumor', 'neoplasm', 'carcinoma', 'lymphoma', 'leukemia', 'melanoma', 'sarcoma', 'metastatic', 'oncological',
+      'chemotherapy', 'radiation therapy', 'immunotherapy', 'targeted therapy', 'myeloma', 'glioma', 'blastoma',
+      'adenocarcinoma', 'malignant', 'benign tumor', 'metastasis', 'oncogene', 'cancer staging', 'remission',
+      'solid tumor', 'hematologic', 'bone marrow', 'biopsy', 'cancer biomarker', 'cancer screening'
+    ]
+  },
+  { 
+    value: 'cardiology',
+    label: 'Cardiology',
+    keywords: [
+      'heart', 'cardiac', 'cardiovascular', 'hypertension', 'arrhythmia', 'coronary', 'vascular', 'atherosclerosis', 'stroke', 'thrombosis',
+      'myocardial infarction', 'heart failure', 'angina', 'palpitations', 'tachycardia', 'bradycardia', 'heart valve',
+      'atrial fibrillation', 'ventricular', 'blood pressure', 'cholesterol', 'stent', 'bypass', 'angioplasty',
+      'cardiomyopathy', 'ischemic', 'heart rhythm', 'pacemaker', 'defibrillator', 'endocarditis', 'peripheral artery disease'
+    ]
+  },
+  { 
+    value: 'neurology',
+    label: 'Neurology',
+    keywords: [
+      'brain', 'neural', 'neurological', 'alzheimer', 'parkinson', 'epilepsy', 'multiple sclerosis', 'migraine', 'dementia', 'neuropathy',
+      'seizure', 'stroke', 'neurodegenerative', 'cognitive decline', 'tremor', 'huntington', 'amyotrophic lateral sclerosis',
+      'brain tumor', 'concussion', 'traumatic brain injury', 'spinal cord', 'nerve damage', 'neurotransmitter',
+      'cerebral palsy', 'meningitis', 'encephalitis', 'dystonia', 'myasthenia gravis', 'vertigo', 'neuromuscular'
+    ]
+  },
+  { 
+    value: 'immunology',
+    label: 'Immunology',
+    keywords: [
+      'immune', 'autoimmune', 'allergy', 'rheumatoid', 'lupus', 'inflammatory', 'immunodeficiency', 'transplant', 'rejection', 'immunotherapy',
+      'antibody', 'antigen', 'cytokine', 'inflammation', 'immune response', 'immune system', 'autoantibody',
+      'immunoglobulin', 'lymphocyte', 'vaccine', 'immunization', 'immune tolerance', 'immune checkpoint',
+      'immunosuppression', 'autoimmunity', 'immune cell', 'immune modulation', 'immune reconstitution',
+      'immune surveillance', 'immune memory'
+    ]
+  },
+  { 
+    value: 'infectious_diseases',
+    label: 'Infectious Diseases',
+    keywords: [
+      'infection', 'viral', 'bacterial', 'covid', 'hiv', 'aids', 'hepatitis', 'tuberculosis', 'antimicrobial', 'vaccine',
+      'pathogen', 'microorganism', 'antibiotic', 'antiviral', 'fungal', 'parasitic', 'sepsis', 'pneumonia',
+      'meningitis', 'influenza', 'coronavirus', 'sars', 'mers', 'ebola', 'zika', 'malaria', 'dengue',
+      'antibiotic resistance', 'immune response', 'contagious', 'epidemic', 'pandemic', 'quarantine',
+      'infection control', 'preventive measures'
+    ]
+  },
+  { 
+    value: 'rare_diseases',
+    label: 'Rare Diseases',
+    keywords: [
+      'rare', 'orphan', 'genetic disorder', 'congenital', 'hereditary', 'syndrome', 'mutation', 'metabolic disorder',
+      'lysosomal storage', 'mitochondrial disease', 'cystic fibrosis', 'huntington', 'duchenne', 'fabry disease',
+      'gaucher disease', 'pompe disease', 'sickle cell', 'thalassemia', 'hemophilia', 'phenylketonuria',
+      'rare cancer', 'rare genetic', 'rare neurological', 'rare metabolic', 'rare cardiovascular',
+      'rare respiratory', 'rare immunological', 'rare endocrine', 'rare bone', 'rare skin'
+    ]
+  },
+  { 
+    value: 'pediatrics',
+    label: 'Pediatrics',
+    keywords: [
+      'pediatric', 'children', 'infant', 'neonatal', 'juvenile', 'childhood', 'adolescent', 'birth', 'congenital',
+      'developmental', 'growth', 'pediatric cancer', 'pediatric cardiology', 'pediatric neurology',
+      'pediatric immunology', 'pediatric endocrinology', 'pediatric gastroenterology', 'pediatric pulmonology',
+      'birth defect', 'genetic disorder', 'developmental delay', 'learning disability', 'autism spectrum',
+      'attention deficit', 'childhood obesity', 'pediatric diabetes', 'pediatric asthma', 'pediatric arthritis',
+      'childhood vaccination'
+    ]
+  },
+  { 
+    value: 'metabolic',
+    label: 'Metabolic Disorders',
+    keywords: [
+      'diabetes', 'obesity', 'metabolic', 'endocrine', 'thyroid', 'hormone', 'lipid', 'nutrition',
+      'metabolism', 'insulin resistance', 'metabolic syndrome', 'type 1 diabetes', 'type 2 diabetes',
+      'gestational diabetes', 'hyperthyroidism', 'hypothyroidism', 'adrenal disorder', 'pituitary disorder',
+      'growth hormone', 'metabolic disease', 'inborn error', 'fatty acid oxidation', 'glycogen storage',
+      'mitochondrial disorder', 'amino acid metabolism', 'carbohydrate metabolism', 'lipid metabolism',
+      'mineral metabolism', 'vitamin deficiency'
+    ]
+  },
+  { 
+    value: 'respiratory',
+    label: 'Respiratory',
+    keywords: [
+      'lung', 'pulmonary', 'asthma', 'copd', 'respiratory', 'bronchial', 'pneumonia', 'airway', 'breathing',
+      'emphysema', 'bronchitis', 'pulmonary fibrosis', 'cystic fibrosis', 'lung cancer', 'tuberculosis',
+      'sleep apnea', 'respiratory failure', 'pulmonary hypertension', 'pleural effusion', 'bronchiectasis',
+      'interstitial lung disease', 'respiratory infection', 'respiratory distress', 'respiratory syncytial virus',
+      'lung transplant', 'mechanical ventilation', 'oxygen therapy', 'pulmonary rehabilitation', 'lung function',
+      'respiratory muscle'
+    ]
+  },
+  { 
+    value: 'gastroenterology',
+    label: 'Gastroenterology',
+    keywords: [
+      'gastro', 'digestive', 'liver', 'intestinal', 'bowel', 'colitis', 'crohn', 'hepatic', 'pancreatic',
+      'gastrointestinal', 'stomach', 'esophagus', 'celiac', 'inflammatory bowel disease', 'ulcerative colitis',
+      'irritable bowel syndrome', 'hepatitis', 'cirrhosis', 'fatty liver', 'gallbladder', 'bile duct',
+      'pancreatitis', 'gastritis', 'peptic ulcer', 'acid reflux', 'GERD', 'dysphagia', 'gastroparesis',
+      'gastrointestinal bleeding', 'colorectal cancer', 'diverticulitis', 'gut microbiome'
+    ]
+  },
+  { 
+    value: 'dermatology',
+    label: 'Dermatology',
+    keywords: [
+      'skin', 'dermal', 'psoriasis', 'eczema', 'acne', 'dermatitis', 'melanoma', 'cutaneous',
+      'rash', 'skin cancer', 'basal cell carcinoma', 'squamous cell carcinoma', 'atopic dermatitis',
+      'rosacea', 'vitiligo', 'alopecia', 'hair loss', 'skin infection', 'fungal infection',
+      'contact dermatitis', 'urticaria', 'skin allergy', 'photodermatosis', 'skin aging',
+      'wound healing', 'scar', 'keloid', 'skin graft', 'dermatomyositis', 'skin biopsy'
+    ]
+  },
+  { 
+    value: 'mental_health',
+    label: 'Mental Health',
+    keywords: [
+      'psychiatric', 'depression', 'anxiety', 'schizophrenia', 'bipolar', 'mental', 'psychological', 'behavioral', 'mood',
+      'post traumatic stress', 'PTSD', 'obsessive compulsive', 'OCD', 'eating disorder', 'anorexia', 'bulimia',
+      'personality disorder', 'attention deficit', 'ADHD', 'autism spectrum', 'panic disorder',
+      'social anxiety', 'phobia', 'psychosis', 'substance abuse', 'addiction', 'cognitive behavioral therapy',
+      'psychotherapy', 'mental illness', 'psychiatric medication', 'neurodevelopmental'
+    ]
+  },
+  { 
+    value: 'womens_health',
+    label: 'Women\'s Health',
+    keywords: [
+      'gynecology', 'obstetrics', 'breast', 'ovarian', 'cervical', 'pregnancy', 'fertility', 'menopause', 'reproductive',
+      'maternal health', 'prenatal', 'postnatal', 'gestational', 'labor and delivery', 'contraception',
+      'family planning', 'infertility', 'in vitro fertilization', 'IVF', 'endometriosis', 'polycystic ovary',
+      'PCOS', 'uterine fibroids', 'breast cancer', 'cervical cancer', 'ovarian cancer',
+      'hormone replacement', 'osteoporosis', 'mammography', 'pelvic floor', 'menstrual disorders'
+    ]
+  },
+  { 
+    value: 'orthopedics',
+    label: 'Orthopedics',
+    keywords: [
+      'bone', 'joint', 'muscular', 'skeletal', 'arthritis', 'osteoporosis', 'fracture', 'orthopedic', 'rheumatology',
+      'spine', 'spinal', 'back pain', 'neck pain', 'scoliosis', 'osteoarthritis', 'rheumatoid arthritis',
+      'joint replacement', 'knee replacement', 'hip replacement', 'shoulder surgery', 'sports injury',
+      'tendonitis', 'ligament', 'cartilage', 'bone density', 'bone marrow', 'musculoskeletal',
+      'physical therapy', 'rehabilitation', 'orthopedic trauma', 'joint reconstruction'
+    ]
+  },
+  { 
+    value: 'ophthalmology',
+    label: 'Ophthalmology',
+    keywords: [
+      'eye', 'vision', 'retinal', 'ocular', 'glaucoma', 'macular', 'blindness', 'optical',
+      'cataract', 'cornea', 'refractive error', 'myopia', 'hyperopia', 'astigmatism', 'presbyopia',
+      'diabetic retinopathy', 'age-related macular degeneration', 'AMD', 'retinal detachment',
+      'dry eye syndrome', 'conjunctivitis', 'keratoconus', 'optic nerve', 'eye surgery',
+      'laser eye surgery', 'LASIK', 'intraocular pressure', 'vision correction', 'eye disease',
+      'visual impairment'
+    ]
+  },
+  { 
+    value: 'regenerative_medicine',
+    label: 'Regenerative Medicine',
+    keywords: [
+      'stem cell', 'regenerative', 'tissue engineering', 'cell therapy', 'gene therapy', 'bioengineering', 'regeneration',
+      'tissue repair', 'cellular therapy', 'biomaterials', 'scaffold', 'organ regeneration', 'wound healing',
+      'tissue transplant', 'stem cell transplant', 'bone marrow transplant', 'cord blood', 'platelet rich plasma',
+      'PRP therapy', 'cartilage regeneration', 'skin grafting', 'bioprinting', '3D printing',
+      'tissue scaffolds', 'regenerative therapy', 'cell culture', 'tissue culture', 'organoid',
+      'regenerative treatment', 'tissue reconstruction'
+    ]
+  },
+  { 
+    value: 'pain_management',
+    label: 'Pain Management',
+    keywords: [
+      'pain', 'chronic pain', 'analgesia', 'neuropathic', 'palliative', 'acute pain', 'pain relief',
+      'pain medication', 'opioid', 'non-opioid', 'pain control', 'pain assessment', 'pain scale',
+      'back pain', 'neck pain', 'joint pain', 'muscle pain', 'nerve pain', 'cancer pain',
+      'postoperative pain', 'pain therapy', 'pain rehabilitation', 'pain psychology',
+      'interventional pain', 'pain clinic', 'pain specialist', 'pain management program',
+      'alternative pain therapy', 'pain reduction'
+    ]
+  },
+  { 
+    value: 'addiction_medicine',
+    label: 'Addiction Medicine',
+    keywords: [
+      'addiction', 'substance abuse', 'dependence', 'opioid', 'alcohol', 'withdrawal', 'rehabilitation',
+      'substance use disorder', 'drug abuse', 'alcoholism', 'drug dependence', 'behavioral addiction',
+      'addiction treatment', 'recovery program', 'detoxification', 'medication-assisted treatment',
+      'addiction therapy', 'addiction counseling', 'relapse prevention', 'harm reduction',
+      'substance abuse prevention', 'addiction medicine', 'addiction psychiatry', 'drug rehabilitation',
+      'recovery support', 'addiction recovery', 'sobriety', 'addiction intervention', 'addiction assessment',
+      'addiction specialist'
+    ]
+  }
 ];
 
 export type TherapeuticArea = (typeof THERAPEUTIC_AREAS)[number]['value'];

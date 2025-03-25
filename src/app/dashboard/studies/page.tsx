@@ -339,19 +339,13 @@ export default function ClinicalTrialsSearch(): React.JSX.Element {
     <div className="container mx-auto px-2 md:px-6 py-4 max-w-7xl">
       <PreferenceModal
         isOpen={isModalOpen}
-        onClose={() => {
-          if (!isNewUser) {
-            setIsModalOpen(false);
-          }
+        onClose={() => setIsModalOpen(false)}
+        onSave={handleSavePreferences}
+        initialPreferences={{
+          phase: userPreferences?.phase?.map(p => typeof p === 'string' ? p as StudyPhase : p) ?? [],
+          status: userPreferences?.status?.map(s => typeof s === 'string' ? s as StudyStatus : s) ?? [],
+          therapeuticArea: userPreferences?.therapeuticArea ?? []
         }}
-        onSave={(preferences) => {
-          handleSavePreferences(preferences);
-          if (preferences.phase?.length || preferences.status?.length || preferences.therapeuticArea?.length) {
-            setIsModalOpen(false);
-            setIsNewUser(false);
-          }
-        }}
-        forceOpen={isNewUser}
       />
 
       <div className="space-y-4 md:space-y-6">
@@ -365,6 +359,7 @@ export default function ClinicalTrialsSearch(): React.JSX.Element {
             setFormData={setFormData}
             onToggleBookmarks={toggleBookmarksFilter}
             hasBookmarks={hasBookmarks}
+            onOpenPreferences={() => setIsModalOpen(true)}
           />
         </div>
 

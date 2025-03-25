@@ -108,25 +108,25 @@ const StudyCard = ({
         {hasContactInfo && (
           <div className="col-span-1 sm:col-span-2 flex flex-col gap-2 border-t pt-2 mt-1">
             <div className="font-medium text-xs">Contact Information</div>
-            <div className="flex flex-wrap gap-x-4 gap-y-2">
+            <div className="flex flex-wrap gap-2">
               {contactEmail && (
                 <a 
                   href={`mailto:${contactEmail}`}
-                  className="flex items-center gap-1 text-primary hover:underline"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 hover:bg-blue-100 text-blue-700 hover:text-blue-800 transition-colors duration-200 group hover:shadow-sm"
                   title="Send email"
                 >
-                  <Mail className="w-3 h-3" />
-                  <span className="text-xs">{contactEmail}</span>
+                  <Mail className="w-3.5 h-3.5 transition-transform group-hover:scale-110" />
+                  <span className="text-xs font-medium">{contactEmail}</span>
                 </a>
               )}
               {contactPhone && (
                 <a 
                   href={`tel:${contactPhone}`}
-                  className="flex items-center gap-1 text-primary hover:underline"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-50 hover:bg-green-100 text-green-700 hover:text-green-800 transition-colors duration-200 group hover:shadow-sm"
                   title="Call phone number"
                 >
-                  <Phone className="w-3 h-3" />
-                  <span className="text-xs">{contactPhone}</span>
+                  <Phone className="w-3.5 h-3.5 transition-transform group-hover:scale-110" />
+                  <span className="text-xs font-medium">{contactPhone}</span>
                 </a>
               )}
             </div>

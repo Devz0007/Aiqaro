@@ -1,7 +1,7 @@
 // src/app/api/studies/route.ts
 import { NextResponse } from 'next/server';
-
-import { api, ClinicalTrialsApiError } from '@/lib/api/clinical-trials';
+import { ClinicalTrialsApiError } from '@/lib/api/clinical-trials';
+import { api } from '@/lib/api/clinical-trials';
 import { STUDIES_PER_PAGE } from '@/lib/constants/studies';
 import {
   SearchFiltersSchema,
@@ -11,6 +11,8 @@ import {
   SortField,
   SortDirection,
   Sex,
+  THERAPEUTIC_AREAS,
+  type TherapeuticAreaData
 } from '@/types/clinical-trials/filters';
 import type { SearchParams } from '@/types/clinical-trials/search';
 
@@ -84,9 +86,11 @@ export async function GET(request: Request): Promise<NextResponse> {
       validatedFilters.therapeuticArea !== undefined &&
       validatedFilters.therapeuticArea?.length > 0
     ) {
-      const areaQueries = validatedFilters.therapeuticArea.map(
-        (area) => `AREA[Condition]${area}`
-      );
+      const areaQueries = validatedFilters.therapeuticArea.map((area) => {
+        const areaData = THERAPEUTIC_AREAS.find((ta: TherapeuticAreaData) => ta.value === area);
+        // Use only the main label for the query to keep it manageable
+        return `AREA[Condition]${areaData?.label ?? area}`;
+      });
       advancedQueries.push(`(${areaQueries.join(' OR ')})`);
     }
 

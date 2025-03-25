@@ -210,35 +210,56 @@ export default function HomePage(): React.JSX.Element {
             Your Aiqaro Dashboard at a Glance
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Preferences Screenshot - Now First */}
             <div 
-              className="text-center h-[450px]"
+              className="text-center relative group flex flex-col items-center"
               style={{
                 transform: `translateX(${Math.min(0, (scrollY - 400) * 0.2)}px)`,
                 opacity: Math.min(1, Math.max(0, (scrollY - 350) / 250))
               }}
             >
-              <Image
-                src="/DashboardScreen.png"
-                alt="Aiqaro Dashboard Screenshot 1"
-                className="rounded-lg shadow-lg object-cover w-full h-full"
-                width={500}
-                height={450}
-              />
+              <div className="relative w-full aspect-[16/10] flex items-center justify-center bg-background rounded-lg overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-accent/5 transform group-hover:scale-[1.02] transition-transform duration-300" />
+                <Image
+                  src="/SavePrefScreen.png?v=2"
+                  alt="Study Preferences - Customize your preferences for relevant clinical trials"
+                  className="w-[98%] h-[98%] object-contain transform group-hover:scale-[1.02] transition-transform duration-300"
+                  width={1920}
+                  height={1080}
+                  priority
+                />
+              </div>
+              <div className="mt-6 text-center w-full">
+                <p className="text-lg font-medium text-foreground">
+                  Streamline your site's trial selection with smart preferences
+                </p>
+              </div>
             </div>
+
+            {/* Dashboard Screenshot - Now Second */}
             <div 
-              className="text-center h-[450px]"
+              className="text-center relative group flex flex-col items-center"
               style={{
                 transform: `translateX(${Math.max(0, (scrollY - 400) * -0.2)}px)`,
                 opacity: Math.min(1, Math.max(0, (scrollY - 350) / 250))
               }}
             >
-              <Image
-                src="/SavePrefScreen.png"
-                alt="Aiqaro Dashboard Screenshot 2"
-                className="rounded-lg shadow-lg object-cover w-full h-full"
-                width={500}
-                height={450}
-              />
+              <div className="relative w-full aspect-[16/10] flex items-center justify-center bg-background rounded-lg overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-accent/5 transform group-hover:scale-[1.02] transition-transform duration-300" />
+                <Image
+                  src="/DashboardScreen.png?v=2"
+                  alt="Clinical Trials Dashboard - Filter and search through thousands of trials"
+                  className="w-[98%] h-[98%] object-contain transform group-hover:scale-[1.02] transition-transform duration-300"
+                  width={1920}
+                  height={1080}
+                  priority
+                />
+              </div>
+              <div className="mt-6 text-center w-full">
+                <p className="text-lg font-medium text-foreground">
+                  AI driven Intelligent trial matching
+                </p>
+              </div>
             </div>
           </div>
         </div>
