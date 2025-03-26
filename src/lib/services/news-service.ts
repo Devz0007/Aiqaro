@@ -1,4 +1,5 @@
 import { NewsItem, NewsFilter, NewsResponse, NewsSource, NewsCategory } from '@/types/news';
+import Parser from 'rss-parser';
 
 const RSS2JSON_API_KEY = process.env.NEXT_PUBLIC_RSS2JSON_API_KEY;
 const FDA_API_KEY = process.env.NEXT_PUBLIC_FDA_API_KEY;
@@ -24,6 +25,9 @@ const RSS_FEEDS = {
   IMDRF_NEWS: 'https://www.imdrf.org/news/feed',
   // Trial Site News
   TRIAL_SITE_NEWS: 'https://trialsitenews.com/feed',
+  // PubMed feeds
+  PUBMED_CLINICAL_TRIALS: 'https://pubmed.ncbi.nlm.nih.gov/rss/search/clinical+trials+drug+development.xml',
+  PUBMED_FDA: 'https://pubmed.ncbi.nlm.nih.gov/rss/search/fda.xml',
 };
 
 // Content analysis patterns for smart categorization
@@ -84,27 +88,42 @@ interface RSS2JSONResponse {
   }>;
 }
 
-// Helper function for fetch with timeout
-async function fetchWithTimeout(url: string, options: RequestInit = {}, timeout = 5000): Promise<Response> {
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeout);
-  
-  try {
-    const response = await fetch(url, {
-      ...options,
-      signal: controller.signal,
-      // Add CORS mode to allow for direct fetch where possible
-      mode: 'cors',
-      headers: {
-        ...options.headers,
-      }
-    });
-    clearTimeout(id);
-    return response;
-  } catch (error) {
-    clearTimeout(id);
-    throw error;
+// Helper function to determine the source type from the feed URL
+function determineSourceFromUrl(feedUrl: string): NewsSource {
+  if (feedUrl.includes('fda.gov')) {
+    return 'FDA';
+  } else if (feedUrl.includes('pubmed.ncbi.nlm.nih.gov')) {
+    return 'PUBMED';
+  } else if (feedUrl.includes('drugs.com')) {
+    return 'DRUGS_COM';
+  } else if (feedUrl.includes('europeanpharmaceuticalreview.com')) {
+    return 'INTERNATIONAL';
+  } else if (feedUrl.includes('imdrf.org')) {
+    return 'INTERNATIONAL';
+  } else if (feedUrl.includes('trialsitenews.com')) {
+    return 'TRIAL_SITE';
+  } else {
+    return 'FDA'; // Default to FDA
   }
+}
+
+// Advanced tag extraction based on content analysis
+function extractTags(content: string): string[] {
+  const genericKeywords = [
+    'Phase 1', 'Phase 2', 'Phase 3', 'Phase 4',
+    'Clinical Trial', 'FDA Approval', 'Safety Alert',
+    'Drug Development', 'Medical Device', 'Research',
+    'Regulatory', 'Pharma', 'Treatment', 'Study',
+    'Results', 'Protocol', 'Enrollment', 'Recruitment',
+    'Adverse Event', 'Efficacy', 'Safety', 'Breakthrough',
+    'Emergency Use', 'Authorization', 'Approval',
+  ];
+  
+  const allTags = genericKeywords.filter(keyword => 
+    content.toLowerCase().includes(keyword.toLowerCase())
+  );
+  
+  return [...new Set(allTags)].slice(0, 10);
 }
 
 // Helper function to intelligently categorize content
@@ -162,742 +181,775 @@ function analyzeCategoriesFromContent(
   return categories;
 }
 
-// Advanced tag extraction based on content analysis
-function extractTags(content: string): string[] {
-  const genericKeywords = [
-    'Phase 1', 'Phase 2', 'Phase 3', 'Phase 4',
-    'Clinical Trial', 'FDA Approval', 'Safety Alert',
-    'Drug Development', 'Medical Device', 'Research',
-    'Regulatory', 'Pharma', 'Treatment', 'Study',
-    'Results', 'Protocol', 'Enrollment', 'Recruitment',
-    'Adverse Event', 'Efficacy', 'Safety', 'Breakthrough',
-    'Emergency Use', 'Authorization', 'Approval',
-  ];
+// Helper function to process RSS items
+function processRssItems(items: any[], source: NewsSource): NewsItem[] {
+  const processedItems: NewsItem[] = [];
   
-  // Extract drug names using pattern matching
-  const drugNamePatterns = [
-    /\b[A-Z][a-z]+mab\b/g, // Monoclonal antibodies
-    /\b[A-Z][a-z]+nib\b/g, // Kinase inhibitors
-    /\b[A-Z][a-z]+prazole\b/g, // Proton pump inhibitors
-    /\b[A-Z][a-z]+stat(in)?\b/g, // Statins
-    /\b[A-Z][a-z]+sartan\b/g, // Angiotensin II receptor blockers
-    /\b[A-Z][a-z]+pril\b/g, // ACE inhibitors
-    /\b[A-Z][a-z]+dipine\b/g, // Calcium channel blockers
-    /\b[A-Z][a-z]+xetine\b/g, // SSRI/SNRI antidepressants
-    /\b[A-Z][a-z]+mycin\b/g, // Antibiotics
-    /\b[A-Z][a-z]+cillin\b/g, // Penicillin antibiotics
-  ];
-  
-  const extractedDrugNames = [];
-  for (const pattern of drugNamePatterns) {
-    const matches = content.match(pattern);
-    if (matches) {
-      extractedDrugNames.push(...matches);
+  items.forEach(item => {
+    try {
+      // Check if item has title, link, and pubDate
+      if (!item.title || !item.link) {
+        return; // Skip items without required fields
+      }
+      
+      // Create a unique ID based on link or guid
+      const id = `${source}-${item.guid || item.link}`;
+      
+      // Initialize NewsItem with essential fields
+      const newsItem: NewsItem = {
+        id,
+        title: item.title.trim(),
+        description: (item.description || item.summary || '').trim(),
+        content: (item.content || item.contentSnippet || '').trim(),
+        url: item.link.trim(),
+        publishedAt: item.pubDate || item.isoDate || new Date().toISOString(),
+        imageUrl: '',
+        source,
+        categories: [],
+        tags: []
+      };
+      
+      // Extract image URL if available
+      if (item.enclosure?.url) {
+        newsItem.imageUrl = item.enclosure.url;
+      } else if (item['media:content'] && item['media:content'].length > 0) {
+        newsItem.imageUrl = item['media:content'][0].$.url;
+      } else if (item['media:thumbnail'] && item['media:thumbnail'].length > 0) {
+        newsItem.imageUrl = item['media:thumbnail'][0].$.url;
+      }
+      
+      // Add categories and tags based on content analysis
+      newsItem.categories = analyzeCategoriesFromContent(
+        newsItem.title,
+        newsItem.description,
+        newsItem.content,
+        item.feedUrl || ''
+      );
+      
+      // Extract tags from the content
+      newsItem.tags = extractTags(newsItem.title + ' ' + newsItem.description + ' ' + newsItem.content);
+      
+      // Add the processed item
+      processedItems.push(newsItem);
+    } catch (error) {
+      console.warn(`Error processing RSS item:`, error);
+      // Continue processing other items
     }
-  }
+  });
   
-  // Extract disease names and conditions
-  const conditionPatterns = [
-    /\b(?:cancer|carcinoma|tumor|sarcoma|leukemia|lymphoma)\b/gi,
-    /\b(?:diabetes|hypertension|arthritis|alzheimer|parkinson)\b/gi,
-    /\b(?:obesity|depression|anxiety|schizophrenia|bipolar)\b/gi,
-    /\b(?:asthma|COPD|cardiovascular|heart failure|stroke)\b/gi,
-    /\b(?:COVID-19|coronavirus|virus|infection|bacterial|immune)\b/gi,
-  ];
-  
-  const extractedConditions = [];
-  for (const pattern of conditionPatterns) {
-    const matches = content.match(pattern);
-    if (matches) {
-      extractedConditions.push(...matches);
-    }
-  }
-  
-  // Combine all tags, remove duplicates and normalize
-  const allTags = [
-    ...genericKeywords.filter(keyword => content.toLowerCase().includes(keyword.toLowerCase())),
-    ...extractedDrugNames,
-    ...extractedConditions
-  ];
-  
-  // Remove duplicates and limit to most relevant
-  return [...new Set(allTags)]
-    .map(tag => tag.trim())
-    .filter(tag => tag.length > 3)
-    .slice(0, 10);
+  return processedItems;
 }
 
-// Ensure we have a valid date format for publishing date
-function getValidDateString(dateStr?: string): string {
-  if (!dateStr) {
-    return new Date().toISOString();
-  }
+/**
+ * Attempts to fetch and parse an RSS feed directly
+ */
+async function tryDirectRSSFetch(feedUrl: string): Promise<NewsItem[]> {
+  console.log(`Attempting to fetch RSS feed: ${feedUrl}`);
   
-  try {
-    const date = new Date(dateStr);
-    // Check if date is valid
-    if (!isNaN(date.getTime())) {
-      return date.toISOString();
-    } else {
-      console.warn(`Invalid date format detected: ${dateStr}, using current date instead`);
-      return new Date().toISOString();
+  // Set up RSS parser
+  const parser = new Parser({
+    customFields: {
+      item: [
+        ['media:content', 'media:content', {keepArray: true}],
+        ['media:thumbnail', 'media:thumbnail', {keepArray: true}]
+      ]
     }
-  } catch (error) {
-    console.error(`Error parsing date: ${dateStr}`, error);
-    return new Date().toISOString();
-  }
-}
-
-async function fetchRSSFeed(feedUrl: string): Promise<NewsItem[]> {
-  const url = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feedUrl)}&api_key=${RSS2JSON_API_KEY}`;
+  });
   
+  // Always use a CORS proxy for browser environments
+  let finalUrl = feedUrl;
   try {
-    const response = await fetchWithTimeout(url, {}, 4000);
-    
-    // Check if response is OK before proceeding
-    if (!response.ok) {
-      // If we got a 422 error, it means the RSS feed URL is invalid or can't be processed
-      // by RSS2JSON, so log a more specific error message
-      if (response.status === 422) {
-        console.error(`RSS2JSON couldn't process feed - URL might be invalid or feed format not supported: ${feedUrl}`);
+    if (typeof window !== 'undefined') {
+      finalUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feedUrl)}&api_key=${RSS2JSON_API_KEY}`;
+      console.log(`Using RSS2JSON API for ${feedUrl}`);
+      
+      // Use the RSS2JSON API with better error handling
+      try {
+        const response = await fetch(finalUrl);
         
-        // Try a direct XML parsing fallback approach for FDA and other feeds
-        if (feedUrl.includes('fda.gov') || feedUrl.includes('trialsitenews')) {
-          console.log(`Attempting direct fetch for feed: ${feedUrl}`);
-          const directFetchResults = await tryDirectRSSFetch(feedUrl);
+        // Handle non-OK responses without throwing errors that propagate to console
+        if (!response.ok) {
+          console.warn(`RSS2JSON API returned status ${response.status} for ${feedUrl} - trying fallback`);
+          return []; // Return empty array instead of throwing
+        }
+        
+        const data = await response.json() as RSS2JSONResponse;
+        if (data.status !== 'ok') {
+          console.warn(`RSS2JSON error: ${data.status} for ${feedUrl}`);
+          return []; // Return empty array instead of throwing
+        }
+        
+        // Convert RSS2JSON format to our NewsItem format
+        return data.items.map(item => {
+          // Generate a unique ID
+          const id = `${determineSourceFromUrl(feedUrl)}-${item.guid || item.link}`;
           
-          // If direct fetch also fails for FDA feeds, use fallback data
-          if (directFetchResults.length === 0 && feedUrl.includes('fda.gov')) {
-            if (feedUrl.includes('drugs')) {
-              return createFallbackFDAItems('drugs');
-            } else if (feedUrl.includes('devices') || feedUrl.includes('medical-device')) {
-              return createFallbackFDAItems('devices');
-            } else if (feedUrl.includes('medwatch')) {
-              return createFallbackFDAItems('medwatch');
-            } else if (feedUrl.includes('recalls')) {
-              return createFallbackFDAItems('recalls');
-            }
+          // Extract image URL from content if available
+          let imageUrl = '';
+          if (item.enclosure?.link) {
+            imageUrl = item.enclosure.link;
           }
           
-          return directFetchResults;
-        }
-      } else if (response.status === 500) {
-        console.error(`HTTP 500 error when fetching RSS feed ${feedUrl} - server error`);
-        
-        // Use fallback data for specific feeds that are known to have issues
-        if (feedUrl.includes('imdrf.org')) {
-          return createFallbackIMDRFItems();
-        }
-      } else {
-        console.error(`HTTP error ${response.status} when fetching RSS feed ${feedUrl}`);
+          // Create base news item
+          const newsItem: NewsItem = {
+            id,
+            title: item.title,
+            description: item.description || '',
+            content: item.content || '',
+            url: item.link,
+            publishedAt: item.pubDate,
+            imageUrl,
+            source: determineSourceFromUrl(feedUrl),
+            categories: [],
+            tags: []
+          };
+          
+          // Add categories and tags based on content analysis
+          newsItem.categories = analyzeCategoriesFromContent(
+            newsItem.title,
+            newsItem.description,
+            newsItem.content,
+            feedUrl
+          );
+          
+          // Extract tags from the content
+          newsItem.tags = extractTags(newsItem.title + ' ' + newsItem.description + ' ' + newsItem.content);
+          
+          return newsItem;
+        });
+      } catch (e) {
+        console.warn(`Error using RSS2JSON API for ${feedUrl}:`, e);
+        // Continue to fallback without throwing console errors
+        return [];
       }
-      return [];
+    } else {
+      // Server-side fetching
+      const feed = await parser.parseURL(feedUrl);
+      return processRssItems(feed.items || [], determineSourceFromUrl(feedUrl));
     }
-    
-    const data: RSS2JSONResponse = await response.json();
-    
-    if (data.status !== 'ok') {
-      console.error(`RSS2JSON API returned non-OK status for feed ${feedUrl}: ${data.status}`);
-      return [];
-    }
-
-    return data.items.map((item): NewsItem => {
-      // Determine source based on feed URL
-      let source: NewsSource;
-      
-      if (feedUrl.includes('drugs.com')) {
-        source = 'DRUGS_COM';
-      } else if (feedUrl.includes('medical-devices') || feedUrl.includes('device') || feedUrl.includes('imdrf.org')) {
-        source = 'MEDICAL_DEVICE';
-      } else if (feedUrl.includes('fda.gov')) {
-        source = 'FDA';
-      } else if (feedUrl.includes('trialsitenews')) {
-        source = 'TRIAL_SITE';
-      } else {
-        source = 'DRUGS_COM'; // Default fallback
-      }
-      
-      // Use smart content analysis for categories
-      const categories = analyzeCategoriesFromContent(
-        item.title, 
-        item.description, 
-        item.content,
-        feedUrl
-      );
-      
-      // Extract tags from full content including title
-      const tags = extractTags(item.title + ' ' + item.description + ' ' + item.content);
-
-      // Make sure we have a valid publication date
-      const validPublishedAt = getValidDateString(item.pubDate);
-
-      return {
-        id: item.guid,
-        title: item.title,
-        description: item.description,
-        content: item.content,
-        url: item.link,
-        imageUrl: item.enclosure?.link,
-        publishedAt: validPublishedAt,
-        source,
-        categories,
-        tags,
-      };
-    });
   } catch (error) {
-    console.error(`Error fetching RSS feed ${feedUrl}:`, error);
-    return [];
+    console.warn(`Error fetching RSS feed ${feedUrl}:`, error);
+    
+    // Try with CORS proxy as fallback
+    try {
+      console.log(`Falling back to CORS proxy for ${feedUrl}`);
+      const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(feedUrl)}`;
+      const feed = await parser.parseURL(proxyUrl);
+      return processRssItems(feed.items || [], determineSourceFromUrl(feedUrl));
+    } catch (secondError) {
+      console.warn(`All fetch attempts failed for ${feedUrl}`);
+      return [];
+    }
   }
 }
 
-// Direct RSS fetch fallback for when RSS2JSON fails
-async function tryDirectRSSFetch(feedUrl: string): Promise<NewsItem[]> {
+/**
+ * Fetches news from Drugs.com
+ */
+async function fetchDrugsComNews(): Promise<NewsItem[]> {
   try {
-    // Use a shorter timeout for direct fetches to avoid long loading times
-    const response = await fetchWithTimeout(feedUrl, {}, 3000);
+    console.log('Fetching Drugs.com news...');
     
-    if (!response.ok) {
-      console.error(`Direct fetch failed with HTTP error ${response.status} for feed ${feedUrl}`);
-      
-      // Handle specific error cases
-      if (response.status === 500) {
-        if (feedUrl.includes('imdrf.org')) {
-          return createFallbackIMDRFItems();
-        }
-      }
-      
-      return [];
-    }
+    // Define Drugs.com feed URLs
+    const drugsComFeeds = [
+      RSS_FEEDS.DRUGS_MEDICAL_NEWS,
+      RSS_FEEDS.DRUGS_HEADLINE_NEWS,
+      RSS_FEEDS.DRUGS_CLINICAL_TRIALS,
+      RSS_FEEDS.DRUGS_NEW_APPROVALS
+    ];
     
-    const text = await response.text();
-    
-    // Extract items using regex - a simplified approach that doesn't require DOM parsing
-    const items: NewsItem[] = [];
-    let itemMatch;
-    const itemRegex = /<item>([\s\S]*?)<\/item>/g;
-    
-    while ((itemMatch = itemRegex.exec(text)) !== null) {
-      const itemContent = itemMatch[1];
-      
-      const extractField = (fieldName: string): string => {
-        const regex = new RegExp(`<${fieldName}[^>]*>([\\s\\S]*?)<\/${fieldName}>`, 'i');
-        const match = itemContent.match(regex);
-        return match ? match[1].trim() : '';
-      };
-      
-      const title = extractField('title');
-      const description = extractField('description');
-      const link = extractField('link');
-      const pubDate = extractField('pubDate');
-      const guid = extractField('guid') || `${feedUrl}-${items.length}`;
-      
-      // Skip empty items
-      if (!title && !description) continue;
-      
-      // Determine source based on feed URL
-      let source: NewsSource;
-      if (feedUrl.includes('medical-devices')) {
-        source = 'MEDICAL_DEVICE';
-      } else if (feedUrl.includes('trialsitenews')) {
-        source = 'TRIAL_SITE';
-      } else if (feedUrl.includes('imdrf.org')) {
-        source = 'MEDICAL_DEVICE';
-      } else {
-        source = 'FDA';
-      }
-      
-      // Use smart content analysis for categories
-      const categories = analyzeCategoriesFromContent(
-        title, 
-        description, 
-        '', // No content in basic RSS
-        feedUrl
-      );
-      
-      // Extract tags from title and description
-      const tags = extractTags(title + ' ' + description);
-      
-      // Make sure we have a valid publication date
-      const validPublishedAt = getValidDateString(pubDate);
-      
-      items.push({
-        id: guid,
-        title,
-        description,
-        content: description, // Use description as content
-        url: link,
-        imageUrl: undefined,
-        publishedAt: validPublishedAt,
-        source,
-        categories,
-        tags,
-      });
-    }
-    
-    console.log(`Direct RSS fetch successful for ${feedUrl} - found ${items.length} items`);
-    
-    // If no items were found despite a successful response, the format might be invalid
-    if (items.length === 0) {
-      console.warn(`No items found in feed ${feedUrl} despite successful fetch - format may be invalid`);
-      
-      // Return fallback items for known feeds
-      if (feedUrl.includes('imdrf.org')) {
-        return createFallbackIMDRFItems();
-      }
-    }
-    
-    return items;
-  } catch (error) {
-    console.error(`Error in direct RSS fetch for ${feedUrl}:`, error);
-    
-    // Return fallback items for known problematic feeds
-    if (feedUrl.includes('imdrf.org')) {
-      return createFallbackIMDRFItems();
-    }
-    
-    // Return empty array for other failed fetches
-    return [];
-  }
-}
-
-// Function to create reliable fallback FDA news items when all else fails
-function createFallbackFDAItems(feedType: string): NewsItem[] {
-  console.log(`Using fallback data for FDA ${feedType} feed`);
-  const now = new Date();
-  const yesterday = new Date(now);
-  yesterday.setDate(yesterday.getDate() - 1);
-  const twoDaysAgo = new Date(now);
-  twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
-  
-  const items: NewsItem[] = [];
-  
-  if (feedType.includes('drug')) {
-    items.push({
-      id: 'fallback-fda-drugs-1',
-      title: 'FDA Approves New Treatment for Advanced Breast Cancer',
-      description: 'The FDA has approved a new drug for patients with advanced or metastatic breast cancer who have received prior endocrine-based therapy.',
-      content: 'The drug, which targets specific mutations, showed significant improvement in progression-free survival compared to standard treatments in clinical trials.',
-      url: 'https://www.fda.gov/drugs/resources-information-approved-drugs',
-      publishedAt: yesterday.toISOString(),
-      source: 'FDA',
-      categories: ['DRUG_APPROVAL', 'REGULATORY'],
-      tags: ['Breast Cancer', 'Oncology', 'FDA Approval', 'Treatment'],
-    });
-    
-    items.push({
-      id: 'fallback-fda-drugs-2',
-      title: 'FDA Issues Guidelines for Generic Versions of Complex Drugs',
-      description: 'New FDA guidance aims to increase competition in the market for complex drugs by clarifying requirements for generic versions.',
-      content: 'The guidance addresses scientific and regulatory challenges that can delay the development of generic versions of certain complex drugs.',
-      url: 'https://www.fda.gov/drugs/guidances-drugs',
-      publishedAt: now.toISOString(),
-      source: 'FDA',
-      categories: ['REGULATORY', 'PHARMA'],
-      tags: ['Generic Drugs', 'Guidance', 'Regulation', 'Drug Development'],
-    });
-  } else if (feedType.includes('device')) {
-    items.push({
-      id: 'fallback-fda-devices-1',
-      title: 'FDA Authorizes New AI-Powered Medical Diagnostic Device',
-      description: 'The FDA has granted marketing authorization for a novel AI-based diagnostic system for early detection of diabetic retinopathy.',
-      content: 'This device uses advanced algorithms to analyze retinal images and can be used by healthcare providers who may not normally be involved in eye care.',
-      url: 'https://www.fda.gov/medical-devices/recently-approved-devices',
-      publishedAt: yesterday.toISOString(),
-      source: 'MEDICAL_DEVICE',
-      categories: ['MEDICAL_DEVICE', 'REGULATORY'],
-      tags: ['AI', 'Diagnostics', 'Diabetes', 'Ophthalmology'],
-    });
-    
-    items.push({
-      id: 'fallback-fda-devices-2',
-      title: 'FDA Releases Updated Guidance on Medical Device Cybersecurity',
-      description: 'New guidance outlines recommendations for managing cybersecurity risks throughout the total product lifecycle of medical devices.',
-      content: 'The guidance emphasizes the importance of proactively addressing cybersecurity concerns from design to disposal of medical devices.',
-      url: 'https://www.fda.gov/medical-devices/digital-health-center-excellence',
-      publishedAt: now.toISOString(),
-      source: 'MEDICAL_DEVICE',
-      categories: ['MEDICAL_DEVICE', 'REGULATORY', 'SAFETY_ALERT'],
-      tags: ['Cybersecurity', 'Medical Devices', 'Guidance', 'Safety'],
-    });
-    
-    // Add more device news items for better coverage
-    items.push({
-      id: 'fallback-fda-devices-3',
-      title: 'FDA Approves First At-Home COVID-19 Test That Also Detects Flu and RSV',
-      description: 'The FDA has authorized the first at-home COVID-19 diagnostic test that also simultaneously detects influenza A, influenza B, and respiratory syncytial virus (RSV).',
-      content: 'This molecular test provides results in about 30 minutes and allows individuals to self-test at home with a nasal swab sample.',
-      url: 'https://www.fda.gov/medical-devices/safety-communications',
-      publishedAt: twoDaysAgo.toISOString(),
-      source: 'MEDICAL_DEVICE',
-      categories: ['MEDICAL_DEVICE', 'REGULATORY', 'DRUG_APPROVAL'],
-      tags: ['COVID-19', 'Diagnostics', 'Home Testing', 'Respiratory Infections'],
-    });
-  } else if (feedType.includes('medwatch')) {
-    items.push({
-      id: 'fallback-fda-medwatch-1',
-      title: 'FDA Safety Alert: Recall of Certain Blood Pressure Medications',
-      description: 'The FDA is alerting patients and healthcare professionals to a voluntary recall of certain medications used to treat high blood pressure.',
-      content: 'The recall is due to the detection of an impurity that has been classified as a probable human carcinogen based on laboratory tests.',
-      url: 'https://www.fda.gov/safety/medical-product-safety-information',
-      publishedAt: yesterday.toISOString(),
-      source: 'FDA',
-      categories: ['SAFETY_ALERT', 'REGULATORY'],
-      tags: ['Recall', 'Hypertension', 'Safety', 'Medication'],
-    });
-    
-    items.push({
-      id: 'fallback-fda-medwatch-2',
-      title: 'FDA Warns About Serious Adverse Events with Unapproved Use of Compounded Ketamine',
-      description: 'The FDA is warning about serious adverse events experienced by patients who have received compounded ketamine for mental health conditions.',
-      content: 'Reports describe psychiatric events and other serious and potentially life-threatening issues including increases in blood pressure, respiratory depression, and urinary tract symptoms.',
-      url: 'https://www.fda.gov/safety/medwatch-fda-safety-information-and-adverse-event-reporting-program',
-      publishedAt: now.toISOString(),
-      source: 'FDA',
-      categories: ['SAFETY_ALERT', 'REGULATORY'],
-      tags: ['Adverse Events', 'Mental Health', 'Safety', 'Warning'],
-    });
-  } else if (feedType.includes('recall')) {
-    items.push({
-      id: 'fallback-fda-recalls-1',
-      title: 'FDA Announces Recall of Contaminated Over-the-Counter Pain Relievers',
-      description: 'A nationwide recall has been issued for over-the-counter pain relievers due to potential microbial contamination.',
-      content: 'The FDA is advising consumers not to use the affected products identified in this recall. The contamination could potentially lead to infections in consumers.',
-      url: 'https://www.fda.gov/safety/recalls-market-withdrawals-safety-alerts',
-      publishedAt: twoDaysAgo.toISOString(),
-      source: 'FDA',
-      categories: ['SAFETY_ALERT', 'REGULATORY'],
-      tags: ['Recall', 'OTC Medication', 'Safety', 'Contamination'],
-    });
-    
-    items.push({
-      id: 'fallback-fda-recalls-2',
-      title: 'Manufacturer Recalls Infant Formula Due to Potential Health Risk',
-      description: 'A major infant formula manufacturer is voluntarily recalling products due to potential presence of harmful bacteria.',
-      content: 'Parents and caregivers are advised to check lot numbers and return affected products for a full refund. No illnesses have been reported to date.',
-      url: 'https://www.fda.gov/safety/recalls-market-withdrawals-safety-alerts',
-      publishedAt: yesterday.toISOString(),
-      source: 'FDA',
-      categories: ['SAFETY_ALERT', 'REGULATORY'],
-      tags: ['Recall', 'Infant Formula', 'Safety', 'Bacteria'],
-    });
-  }
-  
-  return items;
-}
-
-async function fetchFDANews(): Promise<NewsItem[]> {
-  const url = `https://api.fda.gov/drug/event.json?api_key=${FDA_API_KEY}&search=receivedate:[20240101+TO+20241231]&limit=100`;
-  
-  try {
-    const response = await fetchWithTimeout(url, {}, 5000);
-    
-    // Check if response is OK
-    if (!response.ok) {
-      console.error(`HTTP error ${response.status} when fetching FDA news`);
-      return [];
-    }
-    
-    const data = await response.json();
-    
-    // Check if the data has the expected structure
-    if (!data?.results || !Array.isArray(data.results)) {
-      console.error('FDA API returned unexpected data structure');
-      return [];
-    }
-    
-    return data.results.map((result: any): NewsItem => {
-      const title = result.patient?.drug?.[0]?.medicinalproduct || 'FDA Drug Safety Report';
-      const description = result.patient?.reaction?.[0]?.reactionmeddrapt || '';
-      const content = JSON.stringify(result.patient?.reaction || {});
-      
-      // Use smart content analysis for categories
-      const categories = analyzeCategoriesFromContent(
-        title,
-        description,
-        content,
-        'fda-api'
-      );
-      
-      if (!categories.includes('SAFETY_ALERT')) {
-        categories.push('SAFETY_ALERT');
-      }
-
-      return {
-        id: result.safetyreportid || `fda-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        title,
-        description,
-        content,
-        url: `https://www.fda.gov/safety/${result.safetyreportid || ''}`,
-        publishedAt: result.receivedate || new Date().toISOString(),
-        source: 'FDA',
-        categories,
-        tags: extractTags(title + ' ' + description + ' ' + content),
-      };
-    });
-  } catch (error) {
-    console.error('Error fetching FDA news:', error);
-    return [];
-  }
-}
-
-async function fetchPubMedNews(): Promise<NewsItem[]> {
-  const baseUrl = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils';
-  const searchQuery = 'clinical+trials+drug+development';
-  
-  try {
-    // First get the IDs of relevant articles
-    const searchUrl = `${baseUrl}/esearch.fcgi?db=pubmed&term=${searchQuery}&retmax=20&api_key=${PUBMED_API_KEY || ''}&retmode=json`;
-    const searchResponse = await fetchWithTimeout(searchUrl, {}, 5000);
-    
-    if (!searchResponse.ok) {
-      console.error(`HTTP error ${searchResponse.status} when fetching PubMed search`);
-      return [];
-    }
-    
-    const searchData = await searchResponse.json();
-    
-    if (!searchData?.esearchresult?.idlist || !Array.isArray(searchData.esearchresult.idlist)) {
-      console.error('PubMed API returned unexpected data structure for search');
-      return [];
-    }
-    
-    const ids = searchData.esearchresult.idlist;
-    
-    if (ids.length === 0) {
-      console.warn('PubMed search returned no results');
-      return [];
-    }
-
-    // Then fetch the details of these articles
-    const summaryUrl = `${baseUrl}/esummary.fcgi?db=pubmed&id=${ids.join(',')}&api_key=${PUBMED_API_KEY || ''}&retmode=json`;
-    const summaryResponse = await fetchWithTimeout(summaryUrl, {}, 5000);
-    
-    if (!summaryResponse.ok) {
-      console.error(`HTTP error ${summaryResponse.status} when fetching PubMed summary`);
-      return [];
-    }
-    
-    const summaryData = await summaryResponse.json();
-    
-    if (!summaryData?.result) {
-      console.error('PubMed API returned unexpected data structure for summary');
-      return [];
-    }
-
-    return Object.values(summaryData.result)
-      .map((article: any) => {
-        if (!article?.uid) return null;
-        
-        const title = article.title || '';
-        const abstractText = article.abstracttext || '';
-        
-        // Use smart content analysis for categories
-        const categories = analyzeCategoriesFromContent(
-          title,
-          '',
-          abstractText,
-          'pubmed'
-        );
-        
-        if (!categories.includes('RESEARCH')) {
-          categories.push('RESEARCH');
-        }
-        
-        return {
-          id: article.uid,
-          title,
-          description: article.description || '',
-          content: abstractText,
-          url: `https://pubmed.ncbi.nlm.nih.gov/${article.uid}/`,
-          publishedAt: article.pubdate || new Date().toISOString(),
-          source: 'PUBMED',
-          categories,
-          tags: extractTags(title + ' ' + abstractText),
-        } as NewsItem;
+    // Process all feed promises in parallel with error handling for each
+    const feedPromises = drugsComFeeds.map(feedUrl => 
+      tryDirectRSSFetch(feedUrl).catch(error => {
+        console.warn(`Error fetching Drugs.com feed ${feedUrl}: ${error.message}`);
+        return [];
       })
-      .filter((item): item is NewsItem => item !== null);
+    );
+    
+    // Wait for all promises to resolve
+    const feedResults = await Promise.all(feedPromises);
+    
+    // Track all items to avoid duplicates
+    const processedItems = new Map<string, NewsItem>();
+    
+    // Process each feed's items
+    feedResults.forEach((items, index) => {
+      const feedUrl = drugsComFeeds[index];
+      
+      console.log(`Processing ${items.length} items from ${feedUrl}`);
+      
+      items.forEach(item => {
+        // Set source as DRUGS_COM
+        item.source = 'DRUGS_COM';
+        
+        // Generate a stable key for deduplication
+        const key = item.url || (item.title + item.publishedAt);
+        
+        // Only add if not already processed
+        if (!processedItems.has(key)) {
+          processedItems.set(key, item);
+        }
+      });
+    });
+    
+    // Convert to array
+    const allItems = Array.from(processedItems.values());
+    
+    console.log(`Successfully fetched ${allItems.length} unique Drugs.com news items.`);
+    return allItems;
   } catch (error) {
-    console.error('Error fetching PubMed news:', error);
+    console.warn(`Error in fetchDrugsComNews: ${error instanceof Error ? error.message : String(error)}`);
     return [];
   }
 }
 
-// Function to create reliable fallback IMDRF news items 
-function createFallbackIMDRFItems(): NewsItem[] {
-  console.log(`Using fallback data for IMDRF feed`);
-  const now = new Date();
-  const yesterday = new Date(now);
-  yesterday.setDate(yesterday.getDate() - 1);
-  const twoDaysAgo = new Date(now);
-  twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
-  
-  return [
-    {
-      id: 'fallback-imdrf-1',
-      title: 'IMDRF Publishes Updated Guidance on Medical Device Cybersecurity',
-      description: 'The International Medical Device Regulators Forum has published updated guidance on cybersecurity considerations for medical devices.',
-      content: 'The guidance emphasizes a total product lifecycle approach to cybersecurity risk management for medical devices with a focus on international harmonization.',
-      url: 'https://www.imdrf.org/documents/principles-and-practices-medical-device-cybersecurity',
-      publishedAt: yesterday.toISOString(),
-      source: 'MEDICAL_DEVICE',
-      categories: ['MEDICAL_DEVICE', 'REGULATORY', 'SAFETY_ALERT'],
-      tags: ['Cybersecurity', 'Medical Devices', 'Guidance', 'Safety', 'Regulation'],
-    },
-    {
-      id: 'fallback-imdrf-2',
-      title: 'IMDRF Announces New Work Item on AI Medical Devices',
-      description: 'The IMDRF has initiated a new work item on regulatory approaches for artificial intelligence and machine learning in medical devices.',
-      content: 'This initiative aims to establish harmonized principles for regulating AI/ML-based medical devices across international jurisdictions.',
-      url: 'https://www.imdrf.org/consultations',
-      publishedAt: twoDaysAgo.toISOString(),
-      source: 'MEDICAL_DEVICE',
-      categories: ['MEDICAL_DEVICE', 'REGULATORY', 'RESEARCH'],
-      tags: ['AI', 'Machine Learning', 'Medical Devices', 'Regulation', 'Innovation'],
-    },
-    {
-      id: 'fallback-imdrf-3',
-      title: 'IMDRF Updates Medical Device Regulatory Terminology',
-      description: 'The IMDRF has released an updated medical device terminology document to standardize regulatory terms across global markets.',
-      content: 'The standardized terminology aims to facilitate more efficient regulatory processes and improve communication between manufacturers and regulatory authorities worldwide.',
-      url: 'https://www.imdrf.org/documents',
-      publishedAt: new Date().toISOString(),
-      source: 'MEDICAL_DEVICE',
-      categories: ['MEDICAL_DEVICE', 'REGULATORY'],
-      tags: ['Terminology', 'Standardization', 'Global Harmonization', 'Regulation'],
+/**
+ * Fetches news items from FDA sources
+ */
+async function fetchFDANews(): Promise<NewsItem[]> {
+  try {
+    console.log('Fetching FDA news...');
+    
+    // Define FDA feed URLs
+    const fdaFeeds = [
+      RSS_FEEDS.FDA_DRUGS,
+      RSS_FEEDS.FDA_DEVICES,
+      RSS_FEEDS.FDA_RECALLS,
+      RSS_FEEDS.FDA_PRESS,
+      RSS_FEEDS.FDA_BIOLOGICS
+    ];
+    
+    // Process all feed promises in parallel with error handling for each
+    const feedPromises = fdaFeeds.map(feedUrl => 
+      tryDirectRSSFetch(feedUrl).catch(error => {
+        console.warn(`Error fetching FDA feed ${feedUrl}: ${error.message}`);
+        return [];
+      })
+    );
+    
+    // Wait for all promises to resolve
+    const feedResults = await Promise.all(feedPromises);
+    
+    // Track all items to avoid duplicates
+    const processedItems = new Map<string, NewsItem>();
+    
+    // Process each feed's items
+    feedResults.forEach((items, index) => {
+      const feedUrl = fdaFeeds[index];
+      
+      console.log(`Processing ${items.length} items from ${feedUrl}`);
+      
+      items.forEach(item => {
+        // Determine source based on feed URL
+        let source: NewsSource = 'FDA';
+        if (feedUrl === RSS_FEEDS.FDA_DEVICES) {
+          source = 'MEDICAL_DEVICE';
+          item.source = source;
+        }
+        
+        // Generate a stable key for deduplication
+        const key = item.url || (item.title + item.publishedAt);
+        
+        // Only add if not already processed
+        if (!processedItems.has(key)) {
+          processedItems.set(key, item);
+        }
+      });
+    });
+    
+    // Convert to array
+    const allItems = Array.from(processedItems.values());
+    
+    console.log(`Successfully fetched ${allItems.length} unique FDA news items.`);
+    return allItems;
+  } catch (error) {
+    console.warn(`Error in fetchFDANews: ${error instanceof Error ? error.message : String(error)}`);
+    return [];
+  }
+}
+
+/**
+ * Fetches news from PubMed sources using E-utilities API
+ */
+async function fetchPubMedNews(): Promise<NewsItem[]> {
+  try {
+    console.log('Fetching PubMed news using E-utilities API...');
+    
+    // PubMed API key from environment variable
+    const apiKey = PUBMED_API_KEY;
+    const useApiKey = apiKey ? `&api_key=${apiKey}` : '';
+    
+    // Define search queries
+    const searches = [
+      {
+        term: 'clinical trials drug development',
+        category: 'CLINICAL_TRIAL' as NewsCategory
+      },
+      {
+        term: 'fda approval drug',
+        category: 'DRUG_APPROVAL' as NewsCategory
+      }
+    ];
+    
+    const allPubmedItems: NewsItem[] = [];
+    
+    // Execute each search in sequence to avoid rate limiting
+    for (const search of searches) {
+      try {
+        // Step 1: Use ESearch to find article IDs
+        const searchUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=${encodeURIComponent(search.term)}&retmax=20&sort=date&retmode=json${useApiKey}`;
+        
+        console.log(`Fetching PubMed search results for: ${search.term}`);
+        const searchResponse = await fetch(searchUrl);
+        
+        if (!searchResponse.ok) {
+          console.warn(`PubMed search API returned status ${searchResponse.status} for term: ${search.term}`);
+          continue;
+        }
+        
+        const searchData = await searchResponse.json();
+        const pmids = searchData.esearchresult?.idlist || [];
+        
+        if (pmids.length === 0) {
+          console.warn(`No PubMed IDs found for search term: ${search.term}`);
+          continue;
+        }
+        
+        console.log(`Found ${pmids.length} PubMed IDs for term: ${search.term}`);
+        
+        // Step 2: Use ESummary to get article details
+        const summaryUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&id=${pmids.join(',')}&retmode=json${useApiKey}`;
+        
+        const summaryResponse = await fetch(summaryUrl);
+        
+        if (!summaryResponse.ok) {
+          console.warn(`PubMed summary API returned status ${summaryResponse.status}`);
+          continue;
+        }
+        
+        const summaryData = await summaryResponse.json();
+        const result = summaryData.result || {};
+        
+        // Process each article
+        for (const pmid of pmids) {
+          if (!result[pmid]) continue;
+          
+          const article = result[pmid];
+          
+          // Create a unique ID
+          const id = `PUBMED-${pmid}`;
+          
+          // Extract publication date
+          let publishedAt = new Date().toISOString();
+          try {
+            if (article.pubdate) {
+              publishedAt = new Date(article.pubdate).toISOString();
+            }
+          } catch (e) {
+            console.warn(`Error parsing pubdate for article ${pmid}:`, e);
+          }
+          
+          // Extract authors
+          const authors = article.authors?.map((author: any) => author.name).join(', ') || '';
+          
+          // Create article URL
+          const articleUrl = `https://pubmed.ncbi.nlm.nih.gov/${pmid}/`;
+          
+          // Create news item
+          const newsItem: NewsItem = {
+            id,
+            title: article.title || `PubMed Article ${pmid}`,
+            description: article.description || article.title || '',
+            content: article.description || article.title || '',
+            url: articleUrl,
+            publishedAt,
+            source: 'PUBMED',
+            categories: [search.category],
+            tags: extractTags(article.title + ' ' + (article.description || ''))
+          };
+          
+          // Add author information to content if available
+          if (authors) {
+            newsItem.content = `${newsItem.content}\n\nAuthors: ${authors}`;
+          }
+          
+          // Categorize the content
+          newsItem.categories = analyzeCategoriesFromContent(
+            newsItem.title,
+            newsItem.description,
+            newsItem.content,
+            'pubmed'
+          );
+          
+          // Ensure the primary category from the search is included
+          if (!newsItem.categories.includes(search.category)) {
+            newsItem.categories.push(search.category);
+          }
+          
+          allPubmedItems.push(newsItem);
+        }
+      } catch (e) {
+        console.error(`Error processing PubMed search for term "${search.term}":`, e);
+      }
+      
+      // Add a small delay between searches to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 200));
     }
-  ];
+    
+    console.log(`Successfully fetched ${allPubmedItems.length} PubMed news items.`);
+    return allPubmedItems;
+    
+  } catch (error) {
+    console.warn(`Error in fetchPubMedNews: ${error instanceof Error ? error.message : String(error)}`);
+    return [];
+  }
+}
+
+/**
+ * Fetches news from Trial Site News
+ */
+async function fetchTrialSiteNews(): Promise<NewsItem[]> {
+  try {
+    console.log('Fetching Trial Site News...');
+    
+    const trialSiteUrl = RSS_FEEDS.TRIAL_SITE_NEWS;
+    
+    // Try fetching the Trial Site RSS feed
+    const items = await tryDirectRSSFetch(trialSiteUrl).catch(error => {
+      console.warn(`Error fetching Trial Site feed: ${error.message}`);
+      return [];
+    });
+    
+    // Set the source correctly for all items
+    const trialSiteItems = items.map(item => {
+      item.source = 'TRIAL_SITE';
+      return item;
+    });
+    
+    // Log total count of successfully fetched items
+    console.log(`Successfully fetched ${trialSiteItems.length} Trial Site news items.`);
+    
+    // Debug the items if there are none or very few
+    if (trialSiteItems.length < 5) {
+      console.warn('Very few or no Trial Site items found, debugging RSS feed issues.');
+      // Try an alternative approach
+      try {
+        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(trialSiteUrl)}`;
+        const parser = new Parser();
+        const feed = await parser.parseURL(proxyUrl);
+        
+        if (feed.items && feed.items.length > 0) {
+          console.log(`Found ${feed.items.length} items via proxy, processing them.`);
+          const processedItems = processRssItems(feed.items, 'TRIAL_SITE');
+          return processedItems;
+        }
+      } catch (e) {
+        console.error('Alternative approach for Trial Site feed failed:', e);
+      }
+    }
+    
+    return trialSiteItems;
+  } catch (error) {
+    console.warn(`Error in fetchTrialSiteNews: ${error instanceof Error ? error.message : String(error)}`);
+    return [];
+  }
+}
+
+/**
+ * Fetches international news
+ */
+async function fetchInternationalNews(): Promise<NewsItem[]> {
+  try {
+    console.log('Fetching international news...');
+    
+    // International feeds
+    const internationalFeeds = [
+      RSS_FEEDS.EU_CLINICAL_TRIALS,
+      RSS_FEEDS.IMDRF_NEWS
+    ];
+    
+    // Process all feed promises in parallel with error handling for each
+    const feedPromises = internationalFeeds.map(feedUrl => 
+      tryDirectRSSFetch(feedUrl).catch(error => {
+        console.warn(`Error fetching international feed ${feedUrl}: ${error.message}`);
+        return [];
+      })
+    );
+    
+    // Wait for all promises to resolve
+    const feedResults = await Promise.all(feedPromises);
+    
+    // Combine all results
+    const allItems = feedResults.flat().map(item => {
+      item.source = 'INTERNATIONAL';
+      return item;
+    });
+    
+    console.log(`Successfully fetched ${allItems.length} international news items.`);
+    return allItems;
+  } catch (error) {
+    console.warn(`Error in fetchInternationalNews: ${error instanceof Error ? error.message : String(error)}`);
+    return [];
+  }
+}
+
+/**
+ * Fetches medical device news
+ */
+async function fetchMedicalDeviceNews(): Promise<NewsItem[]> {
+  try {
+    console.log('Fetching medical device news...');
+    
+    // Define medical device feed URLs
+    const medicalDeviceFeeds = [
+      RSS_FEEDS.FDA_DEVICES,
+      RSS_FEEDS.IMDRF_NEWS
+    ];
+    
+    // Process all feed promises in parallel with error handling for each
+    const feedPromises = medicalDeviceFeeds.map(feedUrl => 
+      tryDirectRSSFetch(feedUrl).catch(error => {
+        console.warn(`Error fetching medical device feed ${feedUrl}: ${error.message}`);
+        return [];
+      })
+    );
+    
+    // Wait for all promises to resolve
+    const feedResults = await Promise.all(feedPromises);
+    
+    // Track all items to avoid duplicates
+    const processedItems = new Map<string, NewsItem>();
+    
+    // Process each feed's items
+    feedResults.forEach((items, index) => {
+      const feedUrl = medicalDeviceFeeds[index];
+      
+      console.log(`Processing ${items.length} items from ${feedUrl}`);
+      
+      items.forEach(item => {
+        // Set source as MEDICAL_DEVICE
+        item.source = 'MEDICAL_DEVICE';
+        
+        // Generate a stable key for deduplication
+        const key = item.url || (item.title + item.publishedAt);
+        
+        // Only add if not already processed
+        if (!processedItems.has(key)) {
+          processedItems.set(key, item);
+        }
+      });
+    });
+    
+    // Convert to array
+    const allItems = Array.from(processedItems.values());
+    
+    // Add additional medical device news by searching PubMed
+    try {
+      const apiKey = PUBMED_API_KEY;
+      const useApiKey = apiKey ? `&api_key=${apiKey}` : '';
+      
+      // Search for medical device articles
+      const searchUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=${encodeURIComponent('medical device approval')}&retmax=10&sort=date&retmode=json${useApiKey}`;
+      
+      const searchResponse = await fetch(searchUrl);
+      
+      if (searchResponse.ok) {
+        const searchData = await searchResponse.json();
+        const pmids = searchData.esearchresult?.idlist || [];
+        
+        if (pmids.length > 0) {
+          // Get article details
+          const summaryUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&id=${pmids.join(',')}&retmode=json${useApiKey}`;
+          
+          const summaryResponse = await fetch(summaryUrl);
+          
+          if (summaryResponse.ok) {
+            const summaryData = await summaryResponse.json();
+            const result = summaryData.result || {};
+            
+            // Process each article
+            for (const pmid of pmids) {
+              if (!result[pmid]) continue;
+              
+              const article = result[pmid];
+              
+              // Create a unique ID
+              const id = `MEDICAL_DEVICE-PUBMED-${pmid}`;
+              
+              // Extract publication date
+              let publishedAt = new Date().toISOString();
+              try {
+                if (article.pubdate) {
+                  publishedAt = new Date(article.pubdate).toISOString();
+                }
+              } catch (e) {
+                console.warn(`Error parsing pubdate for medical device article ${pmid}:`, e);
+              }
+              
+              // Create article URL
+              const articleUrl = `https://pubmed.ncbi.nlm.nih.gov/${pmid}/`;
+              
+              // Create news item
+              const newsItem: NewsItem = {
+                id,
+                title: article.title || `Medical Device Article ${pmid}`,
+                description: article.description || article.title || '',
+                content: article.description || article.title || '',
+                url: articleUrl,
+                publishedAt,
+                source: 'MEDICAL_DEVICE',
+                categories: ['MEDICAL_DEVICE'],
+                tags: extractTags(article.title + ' ' + (article.description || ''))
+              };
+              
+              // Generate a stable key for deduplication
+              const key = newsItem.url || (newsItem.title + newsItem.publishedAt);
+              
+              // Only add if not already processed
+              if (!processedItems.has(key)) {
+                processedItems.set(key, newsItem);
+              }
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('Error fetching additional medical device news from PubMed:', error);
+    }
+    
+    // Get final array of items
+    const finalItems = Array.from(processedItems.values());
+    
+    console.log(`Successfully fetched ${finalItems.length} unique medical device news items.`);
+    return finalItems;
+  } catch (error) {
+    console.warn(`Error in fetchMedicalDeviceNews: ${error instanceof Error ? error.message : String(error)}`);
+    return [];
+  }
 }
 
 export async function fetchNews(filter?: NewsFilter): Promise<NewsResponse> {
   try {
-    // Define the fetch promises with SafeFetch wrappers
-    const fetchPromises = [
-      // Drugs.com feeds - reliable through RSS2JSON
-      Promise.resolve().then(() => fetchRSSFeed(RSS_FEEDS.DRUGS_MEDICAL_NEWS).catch(() => [])),
-      Promise.resolve().then(() => fetchRSSFeed(RSS_FEEDS.DRUGS_HEADLINE_NEWS).catch(() => [])),
-      Promise.resolve().then(() => fetchRSSFeed(RSS_FEEDS.DRUGS_FDA_ALERTS).catch(() => [])),
-      Promise.resolve().then(() => fetchRSSFeed(RSS_FEEDS.DRUGS_NEW_APPROVALS).catch(() => [])),
-      Promise.resolve().then(() => fetchRSSFeed(RSS_FEEDS.DRUGS_NEW_APPLICATIONS).catch(() => [])),
-      Promise.resolve().then(() => fetchRSSFeed(RSS_FEEDS.DRUGS_CLINICAL_TRIALS).catch(() => [])),
-      
-      // FDA feeds - use fallback data immediately to avoid CORS errors
-      Promise.resolve().then(() => createFallbackFDAItems('drugs')),
-      Promise.resolve().then(() => createFallbackFDAItems('devices')),
-      Promise.resolve().then(() => createFallbackFDAItems('medwatch')),
-      Promise.resolve().then(() => createFallbackFDAItems('recalls')),
-      
-      // European and International feeds - try through RSS2JSON
-      Promise.resolve().then(() => fetchRSSFeed(RSS_FEEDS.EU_CLINICAL_TRIALS).catch(() => [])),
-      // Use fallback for IMDRF feed directly since it's throwing 500 errors
-      Promise.resolve().then(() => createFallbackIMDRFItems()),
-      Promise.resolve().then(() => fetchRSSFeed(RSS_FEEDS.TRIAL_SITE_NEWS).catch(() => [])),
-      
-      // API-based feeds - more reliable
-      Promise.resolve().then(() => fetchFDANews().catch(() => [])),
-      Promise.resolve().then(() => fetchPubMedNews().catch(() => []))
+    console.log('Beginning fetchNews with filter:', filter);
+    // Fetch news from all sources in parallel
+    const newsPromises = [
+      fetchFDANews().catch(error => {
+        console.error('Error fetching FDA news:', error);
+        return [];
+      }),
+      fetchPubMedNews().catch(error => {
+        console.error('Error fetching PubMed news:', error);
+        return [];
+      }),
+      fetchMedicalDeviceNews().catch(error => {
+        console.error('Error fetching Medical Device news:', error);
+        return [];
+      }),
+      fetchTrialSiteNews().catch(error => {
+        console.error('Error fetching Trial Site news:', error);
+        return [];
+      }),
+      fetchInternationalNews().catch(error => {
+        console.error('Error fetching international news:', error);
+        return [];
+      }),
+      fetchDrugsComNews().catch(error => {
+        console.error('Error fetching Drugs.com news:', error);
+        return [];
+      })
     ];
     
-    // Fetch from all sources in parallel, with additional error handling
-    const [
-      drugsComMedicalNews,
-      drugsComHeadlineNews,
-      drugsComFDAAlerts,
-      drugsComNewApprovals,
-      drugsComNewApplications,
-      drugsComClinicalTrials,
-      fdaDrugsNews,
-      fdaDevicesNews,
-      fdaMedWatchNews,
-      fdaRecallsNews,
-      euClinicalTrials,
-      imdrfNews,
-      trialSiteNews,
-      fdaApiNews,
-      pubmedNews
-    ] = await Promise.all(fetchPromises);
+    console.log('Waiting for all news sources to be fetched...');
+    // Wait for all news sources to be fetched
+    const [fdaNews, pubmedNews, medicalDeviceNews, trialSiteNews, internationalNews, drugsComNews] = await Promise.all(newsPromises);
     
-    // Log which feeds succeeded and which failed
-    console.log(`Feeds fetched: 
-      Medical News: ${drugsComMedicalNews.length} items,
-      Headline News: ${drugsComHeadlineNews.length} items,
-      FDA Alerts: ${drugsComFDAAlerts.length} items, 
-      New Approvals: ${drugsComNewApprovals.length} items,
-      New Applications: ${drugsComNewApplications.length} items,
-      Clinical Trials: ${drugsComClinicalTrials.length} items,
-      FDA Drugs News: ${fdaDrugsNews.length} items,
-      FDA Devices: ${fdaDevicesNews.length} items,
-      FDA MedWatch: ${fdaMedWatchNews.length} items,
-      FDA Recalls: ${fdaRecallsNews.length} items,
-      EU Clinical Trials: ${euClinicalTrials.length} items,
-      IMDRF News: ${imdrfNews.length} items,
-      Trial Site News: ${trialSiteNews.length} items,
-      FDA API: ${fdaApiNews.length} items,
-      PubMed: ${pubmedNews.length} items`);
-
     // Combine all news items
-    let allNews = [
-      ...drugsComMedicalNews,
-      ...drugsComHeadlineNews,
-      ...drugsComFDAAlerts,
-      ...drugsComNewApprovals,
-      ...drugsComNewApplications,
-      ...drugsComClinicalTrials,
-      ...fdaDrugsNews,
-      ...fdaDevicesNews,
-      ...fdaMedWatchNews,
-      ...fdaRecallsNews,
-      ...euClinicalTrials,
-      ...imdrfNews,
-      ...trialSiteNews,
-      ...fdaApiNews,
-      ...pubmedNews
-    ];
+    let allNews = [...fdaNews, ...pubmedNews, ...medicalDeviceNews, ...trialSiteNews, ...internationalNews, ...drugsComNews];
+    console.log('Combined news item count before filtering:', allNews.length);
+    
+    // Filter out items without required fields
+    allNews = allNews.filter(item => !!item.title && !!item.url);
+    console.log('News items after filtering out incomplete items:', allNews.length);
+    
+    // Log the count of items from each source for debugging
+    console.log(`Total news items: ${allNews.length}`);
+    console.log(`FDA news items: ${fdaNews.length}`);
+    console.log(`PubMed news items: ${pubmedNews.length}`);
+    console.log(`Medical Device news items: ${medicalDeviceNews.length}`);
+    console.log(`Trial Site news items: ${trialSiteNews.length}`);
+    console.log(`International news items: ${internationalNews.length}`);
+    console.log(`Drugs.com news items: ${drugsComNews.length}`);
 
+    // Confirm we have all source types present
+    const sourceCount = {
+      FDA: allNews.filter(item => item.source === 'FDA').length,
+      PUBMED: allNews.filter(item => item.source === 'PUBMED').length,
+      DRUGS_COM: allNews.filter(item => item.source === 'DRUGS_COM').length,
+      MEDICAL_DEVICE: allNews.filter(item => item.source === 'MEDICAL_DEVICE').length,
+      TRIAL_SITE: allNews.filter(item => item.source === 'TRIAL_SITE').length,
+      INTERNATIONAL: allNews.filter(item => item.source === 'INTERNATIONAL').length
+    };
+    
+    console.log('News items by source type:', sourceCount);
+    
     // Apply filters if provided
     if (filter) {
-      if (filter.sources?.length) {
+      console.log('Applying filters to news items...');
+      if (filter.sources && filter.sources.length > 0) {
+        console.log('Filtering by sources:', filter.sources);
         allNews = allNews.filter(item => filter.sources?.includes(item.source));
+        console.log('News items after source filtering:', allNews.length);
       }
-      if (filter.categories?.length) {
+      
+      if (filter.categories && filter.categories.length > 0) {
+        console.log('Filtering by categories:', filter.categories);
         allNews = allNews.filter(item => 
-          item.categories.some(cat => filter.categories?.includes(cat))
+          item.categories?.some(category => filter.categories?.includes(category))
         );
+        console.log('News items after category filtering:', allNews.length);
       }
-      if (filter.tags?.length) {
-        allNews = allNews.filter(item =>
-          item.tags.some(tag => filter.tags?.includes(tag))
-        );
-      }
+      
       if (filter.searchQuery) {
-        const query = filter.searchQuery.toLowerCase();
-        allNews = allNews.filter(item =>
-          item.title.toLowerCase().includes(query) ||
-          item.description.toLowerCase().includes(query)
+        console.log('Filtering by search query:', filter.searchQuery);
+        const searchLower = filter.searchQuery.toLowerCase();
+        allNews = allNews.filter(item => 
+          item.title.toLowerCase().includes(searchLower) || 
+          item.description.toLowerCase().includes(searchLower) ||
+          (item.content && item.content.toLowerCase().includes(searchLower)) ||
+          item.tags?.some(tag => tag.toLowerCase().includes(searchLower))
         );
+        console.log('News items after search query filtering:', allNews.length);
       }
-      if (filter.startDate) {
-        allNews = allNews.filter(item =>
-          new Date(item.publishedAt) >= filter.startDate!
+      
+      if (filter.tags && filter.tags.length > 0) {
+        console.log('Filtering by tags:', filter.tags);
+        allNews = allNews.filter(item => 
+          item.tags?.some(tag => filter.tags?.includes(tag))
         );
-      }
-      if (filter.endDate) {
-        allNews = allNews.filter(item =>
-          new Date(item.publishedAt) <= filter.endDate!
-        );
+        console.log('News items after tag filtering:', allNews.length);
       }
     }
-
-    // Sort by date, newest first
-    allNews.sort((a, b) => 
-      new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
-    );
-
+    
+    console.log('Sorting news items by date...');
+    // Sort by date, most recent first
+    allNews.sort((a, b) => {
+      try {
+        const dateA = new Date(a.publishedAt);
+        const dateB = new Date(b.publishedAt);
+        return dateB.getTime() - dateA.getTime();
+      } catch (e) {
+        return 0;
+      }
+    });
+    
     // Apply pagination
-    const page = 1;
-    const pageSize = 20;
+    const page = filter?.page || 1;
+    const pageSize = filter?.pageSize || 20;
     const start = (page - 1) * pageSize;
     const end = start + pageSize;
-
+    
+    console.log(`Applying pagination: page ${page}, pageSize ${pageSize}, items ${start}-${end}`);
+    
     return {
       items: allNews.slice(start, end),
       total: allNews.length,
@@ -905,9 +957,9 @@ export async function fetchNews(filter?: NewsFilter): Promise<NewsResponse> {
       pageSize
     };
   } catch (error) {
-    console.error('Error fetching news:', error);
-    return {
-      items: [],
+    console.error('Error in fetchNews:', error);
+    return { 
+      items: [], 
       total: 0,
       page: 1,
       pageSize: 20

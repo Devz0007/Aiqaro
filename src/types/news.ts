@@ -12,7 +12,8 @@ export type NewsSource =
   | 'PUBMED'
   | 'DRUGS_COM'
   | 'MEDICAL_DEVICE'
-  | 'TRIAL_SITE';
+  | 'TRIAL_SITE'
+  | 'INTERNATIONAL';
 
 export interface NewsItem {
   id: string;
@@ -20,8 +21,8 @@ export interface NewsItem {
   description: string;
   content: string;
   url: string;
-  imageUrl?: string;
   publishedAt: string;
+  imageUrl?: string;
   source: NewsSource;
   categories: NewsCategory[];
   tags: string[];
@@ -34,6 +35,8 @@ export interface NewsFilter {
   tags?: string[];
   startDate?: Date;
   endDate?: Date;
+  page?: number;
+  pageSize?: number;
 }
 
 export interface NewsResponse {
@@ -41,4 +44,15 @@ export interface NewsResponse {
   total: number;
   page: number;
   pageSize: number;
+}
+
+// User preferences for AI recommendations
+export interface UserPreferences {
+  userId: string;
+  preferredSources: NewsSource[];
+  preferredCategories: NewsCategory[];
+  preferredTags: string[];
+  interestedKeywords: string[];
+  excludedKeywords: string[];
+  readArticles: string[];
 } 

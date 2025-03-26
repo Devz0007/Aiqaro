@@ -44,36 +44,31 @@ const UserIdSchema = z.string().min(1, "User ID cannot be empty");
 // Updated route handler for GET
 export async function GET(
   request: Request,
-  { params }: { params: { user_id: string } }
+  context: { params: { user_id: string } }
 ): Promise<Response> {
-  const user_id = params.user_id;
-  console.log(`[PREFERENCES API] GET request for user ID: ${user_id}`);
-
   try {
+    // Correctly access params properly (no need to await, just use context)
+    const user_id = context.params.user_id;
+    // Reduce logging to one line
+    console.log(`[PREFERENCES API] GET request for user ID: ${user_id}`);
+
     // Find user preferences using userId field in the DB
-    console.log(`[PREFERENCES API] Looking for preferences with userId: ${user_id}`);
     const userPreferences = await prisma.user_study_preferences.findUnique({
       where: { userId: user_id },
     });
-    console.log('[PREFERENCES API] Database query result:', userPreferences);
-
+    
     if (!userPreferences) {
       // Check if the user exists first
-      console.log(`[PREFERENCES API] No preferences found, checking if user exists: ${user_id}`);
       const user = await prisma.user.findUnique({
         where: { user_id },
       });
-      console.log(`[PREFERENCES API] User exists check result:`, !!user);
 
       if (!user) {
-        console.log(`[PREFERENCES API] User ${user_id} not found, attempting to create automatically`);
-        
         // Get the authenticated user from Clerk
         const clerkUser = await currentUser();
         
         // Verify that the requested user_id matches the authenticated user
         if (!clerkUser || clerkUser.id !== user_id) {
-          console.error(`[PREFERENCES API] Auth user ID doesn't match requested user ID (${user_id})`);
           return NextResponse.json(
             { error: 'User not found and auto-creation not authorized' },
             { status: 404 }
@@ -123,7 +118,6 @@ export async function GET(
       // Add other fields as needed
     };
 
-    console.log('[PREFERENCES API] Returning formatted preferences to client:', formattedPreferences);
     return NextResponse.json(formattedPreferences);
   } catch (error) {
     console.error(`[PREFERENCES API] Error fetching preferences:`, error);
@@ -137,26 +131,24 @@ export async function GET(
 // Updated route handler for POST
 export async function POST(
   request: Request,
-  { params }: { params: { user_id: string } }
+  context: { params: { user_id: string } }
 ): Promise<Response> {
-  const user_id = params.user_id;
-  console.log(`[PREFERENCES API] POST request for user ID: ${user_id}`);
-
   try {
+    // Correctly access params properly
+    const user_id = context.params.user_id;
+    // Single log line for POST request
+    console.log(`[PREFERENCES API] POST request for user ID: ${user_id}`);
+
     // Check if user exists first
     const user = await prisma.user.findUnique({
       where: { user_id },
     });
-    console.log(`[PREFERENCES API] User exists check: ${!!user}`);
 
     if (!user) {
-      console.log(`[PREFERENCES API] User ${user_id} not found, attempting to create automatically`);
-      
       // Get the authenticated user from Clerk
       const clerkUser = await currentUser();
       
       if (!clerkUser || clerkUser.id !== user_id) {
-        console.error(`[PREFERENCES API] Auth user ID doesn't match requested user ID (${user_id})`);
         return NextResponse.json(
           { error: 'User not found and auto-creation not authorized' },
           { status: 404 }
@@ -189,7 +181,6 @@ export async function POST(
     let body;
     try {
       body = await request.json();
-      console.log(`[PREFERENCES API] Request body received:`, body);
     } catch (parseError) {
       console.error(`[PREFERENCES API] Error parsing request body:`, parseError);
       return NextResponse.json(
@@ -201,7 +192,6 @@ export async function POST(
     let data;
     try {
       data = UserPreferenceSchema.parse(body);
-      console.log(`[PREFERENCES API] Validated data:`, data);
     } catch (validationError) {
       console.error(`[PREFERENCES API] Validation error:`, validationError);
       return NextResponse.json(
@@ -212,7 +202,6 @@ export async function POST(
 
     // Now save the preferences
     try {
-      console.log(`[PREFERENCES API] Attempting to upsert with data:`, data);
       const preferences = await prisma.user_study_preferences.upsert({
         where: { userId: user_id },
         update: { 
@@ -226,8 +215,6 @@ export async function POST(
           updatedAt: new Date()
         },
       });
-
-      console.log(`[PREFERENCES API] Preferences saved successfully:`, preferences);
       
       // Return formatted preferences
       const formattedPreferences = {

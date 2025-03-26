@@ -48,6 +48,7 @@
     "react-dom": "^19.0.0",
     "react-error-boundary": "^4.1.2",
     "react-hook-form": "^7.54.0",
+    "rss-parser": "^3.13.0",
     "stripe": "^17.4.0",
     "svix": "^1.44.0",
     "tailwind-merge": "^2.5.5",

@@ -57,7 +57,7 @@ const data = {
       isActive: true,
       items: [
         {
-          title: 'Search',
+          title: 'Trials',
           url: '/dashboard/studies',
         },
         // {
@@ -68,17 +68,6 @@ const data = {
         //   title: 'Settings',
         //   url: '#',
         // },
-      ],
-    },
-    {
-      title: 'News',
-      url: '/dashboard/news',
-      icon: Newspaper,
-      items: [
-        {
-          title: 'Latest News',
-          url: '/dashboard/news',
-        },
       ],
     },
     // {
@@ -146,6 +135,11 @@ const data = {
     //     },
     //   ],
     // },
+    {
+      title: 'News',
+      url: '/dashboard/news',
+      icon: Newspaper,
+    },
   ],
   projects: [
     {
