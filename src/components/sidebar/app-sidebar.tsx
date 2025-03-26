@@ -11,6 +11,7 @@ import {
   // Send,
   // Settings2,
   SquareTerminal,
+  Newspaper,
 } from 'lucide-react';
 import Link from 'next/link';
 import * as React from 'react';
@@ -67,6 +68,17 @@ const data = {
         //   title: 'Settings',
         //   url: '#',
         // },
+      ],
+    },
+    {
+      title: 'News',
+      url: '/dashboard/news',
+      icon: Newspaper,
+      items: [
+        {
+          title: 'Latest News',
+          url: '/dashboard/news',
+        },
       ],
     },
     // {
