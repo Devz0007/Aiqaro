@@ -2,7 +2,7 @@
 
 import { useUser } from '@clerk/nextjs';
 import { zodResolver } from '@hookform/resolvers/zod';
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Search, ChevronRight, Check } from 'lucide-react';
@@ -56,14 +56,12 @@ const PreferenceSchema = z.object({
 });
 
 const STEPS = [
-  { id: 'phase' as const, label: 'Study Phases' },
-  { id: 'status' as const, label: 'Study Status' },
-  { id: 'therapeuticArea' as const, label: 'Therapeutic Areas' }
-] as const;
+  { id: 'phase', label: 'Study Phases' },
+  { id: 'status', label: 'Study Status' },
+  { id: 'therapeuticArea', label: 'Therapeutic Areas' }
+];
 
-type StepId = (typeof STEPS)[number]['id'];
-
-function ProgressBar({ currentStep, completedSteps }: { currentStep: StepId; completedSteps: Set<string> }) {
+function ProgressBar({ currentStep, completedSteps }: { currentStep: string; completedSteps: Set<string> }) {
   return (
     <div className="w-full mb-8">
       <div className="flex justify-between mb-2">
@@ -115,9 +113,15 @@ export default function PreferenceModal({
   initialPreferences?: Partial<SearchForm>;
 }): React.JSX.Element | null {
   const { user } = useUser();
-  const [activeTab, setActiveTab] = useState<StepId>('phase');
+  const [currentStep, setCurrentStep] = useState('phase');
   const [therapeuticAreaSearch, setTherapeuticAreaSearch] = useState('');
   const [completedSteps, setCompletedSteps] = useState<Set<string>>(new Set());
+  // Create a stable ref to track if modal closing should be prevented
+  const preventCloseRef = useRef(false);
+  // Track if modal is currently in a transition
+  const isTransitioningRef = useRef(false);
+  // Used to force remounting the tabs component
+  const [tabsKey, setTabsKey] = useState(0);
 
   const form = useForm<Partial<SearchForm>>({
     resolver: zodResolver(PreferenceSchema),
@@ -128,22 +132,38 @@ export default function PreferenceModal({
     },
   });
 
-  // Update form values when initialPreferences changes
-  React.useEffect(() => {
-    if (initialPreferences) {
+  // Reset state when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      // Reset to first step
+      setCurrentStep('phase');
+      
+      // Initialize completed steps based on what already has values
+      const initialCompletedSteps = new Set<string>();
+      if (initialPreferences?.phase?.length) initialCompletedSteps.add('phase');
+      if (initialPreferences?.status?.length) initialCompletedSteps.add('status');
+      if (initialPreferences?.therapeuticArea?.length) initialCompletedSteps.add('therapeuticArea');
+      setCompletedSteps(initialCompletedSteps);
+      
+      // Reset form values
       form.reset({
-        phase: initialPreferences.phase || [],
-        status: initialPreferences.status || [],
-        therapeuticArea: initialPreferences.therapeuticArea || [],
+        phase: initialPreferences?.phase || [],
+        status: initialPreferences?.status || [],
+        therapeuticArea: initialPreferences?.therapeuticArea || [],
       });
+      
+      // Force remount tabs
+      setTabsKey(prev => prev + 1);
     }
-  }, [initialPreferences, form]);
+  }, [isOpen, initialPreferences, form]);
 
-  // Handle close attempts - if forceOpen is true, don't allow closing
+  // Handle close attempts - only allow closing when explicitly permitted
   const handleClose = () => {
-    if (!forceOpen) {
-      onClose();
+    // If we're in a transition, or forceOpen is true, prevent closing
+    if (preventCloseRef.current || isTransitioningRef.current || forceOpen) {
+      return;
     }
+    onClose();
   };
 
   const handleSelectAll = (
@@ -176,20 +196,51 @@ export default function PreferenceModal({
     return Array.isArray(values) && values.length > 0;
   };
 
-  const handleNext = () => {
-    const currentIndex = STEPS.findIndex(s => s.id === activeTab);
-    if (isStepComplete(activeTab)) {
-      setCompletedSteps(prev => new Set([...prev, activeTab]));
+  const manuallyChangeStep = (newStep: string) => {
+    // Set transition flag to prevent closing
+    isTransitioningRef.current = true;
+    
+    // Update the completed steps set if current step is complete
+    if (isStepComplete(currentStep)) {
+      setCompletedSteps(prev => new Set([...prev, currentStep]));
     }
+    
+    // Set the current step
+    setCurrentStep(newStep);
+    
+    // Clear transition flag after a delay
+    setTimeout(() => {
+      isTransitioningRef.current = false;
+    }, 300);
+  };
+
+  const handleNext = (e?: React.MouseEvent) => {
+    // If an event was provided, prevent default behavior
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
+    const currentIndex = STEPS.findIndex(s => s.id === currentStep);
+    
+    // Only proceed if there is a next step
     if (currentIndex < STEPS.length - 1) {
-      setActiveTab(STEPS[currentIndex + 1].id);
+      manuallyChangeStep(STEPS[currentIndex + 1].id);
     }
   };
 
-  const handleBack = () => {
-    const currentIndex = STEPS.findIndex(s => s.id === activeTab);
+  const handleBack = (e?: React.MouseEvent) => {
+    // If an event was provided, prevent default behavior
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
+    const currentIndex = STEPS.findIndex(s => s.id === currentStep);
+    
+    // Only go back if not on the first step
     if (currentIndex > 0) {
-      setActiveTab(STEPS[currentIndex - 1].id);
+      manuallyChangeStep(STEPS[currentIndex - 1].id);
     }
   };
 
@@ -198,33 +249,29 @@ export default function PreferenceModal({
       return;
     }
     
-    // Make sure we're sending non-empty preferences for new users
+    // Make sure we're sending non-empty preferences
     const hasSelections = 
       (data.phase && data.phase.length > 0) || 
       (data.status && data.status.length > 0) || 
       (data.therapeuticArea && data.therapeuticArea.length > 0);
     
+    // For new users with forced modal, ensure they select at least one preference
     if (forceOpen && !hasSelections) {
-      // For new users with forced modal, ensure they select at least one preference
-      // Add default selections for new users
       console.log("[PREFERENCES MODAL] Adding default preferences for new user");
       data.phase = ['PHASE1', 'PHASE2', 'PHASE3'] as StudyPhase[];
       data.status = ['RECRUITING', 'NOT_YET_RECRUITING'] as StudyStatus[];
+      
+      // Add default therapeutic areas if none selected
+      if (!data.therapeuticArea || data.therapeuticArea.length === 0) {
+        data.therapeuticArea = ['oncology', 'cardiology'];
+      }
     }
     
     console.log("[PREFERENCES MODAL] Saving preferences:", data);
     onSave(data);
     
-    // Only allow closing if not forceOpen or if user has made selections
-    if (!forceOpen || hasSelections) {
-      onClose();
-    }
-  };
-
-  const getSelectionCountText = (fieldName: keyof Partial<SearchForm>, totalCount: number): string => {
-    const currentValues = form.getValues(fieldName);
-    const valueArray = Array.isArray(currentValues) ? currentValues : [];
-    return valueArray.length ? `${valueArray.length} selected` : 'None selected';
+    // Close the modal
+    onClose();
   };
 
   const filteredTherapeuticAreas = therapeuticAreaSearch
@@ -236,16 +283,286 @@ export default function PreferenceModal({
     return null;
   }
 
-  const currentStepIndex = STEPS.findIndex(s => s.id === activeTab);
+  const currentStepIndex = STEPS.findIndex(s => s.id === currentStep);
   const isLastStep = currentStepIndex === STEPS.length - 1;
   const isFirstStep = currentStepIndex === 0;
 
+  // Render the step content based on currentStep
+  const renderStepContent = () => {
+    switch (currentStep) {
+      case 'phase':
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle>Select Study Phases</CardTitle>
+              <CardDescription>
+                Choose the clinical trial phases you're interested in.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <FormField
+                control={form.control}
+                name="phase"
+                render={() => (
+                  <FormItem>
+                    <div className="mb-4">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          handleSelectAll(
+                            'phase',
+                            Object.entries(phaseDisplayMap),
+                            !Object.keys(phaseDisplayMap).every((phase) =>
+                              form.getValues('phase')?.includes(phase as StudyPhase)
+                            )
+                          )
+                        }
+                      >
+                        Select All
+                      </Button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      {(Object.entries(phaseDisplayMap) as Array<[StudyPhase, string]>).map(([value, label]) => (
+                        <FormField
+                          key={value}
+                          control={form.control}
+                          name="phase"
+                          render={({ field }) => {
+                            return (
+                              <FormItem
+                                key={value}
+                                className="flex flex-row items-start space-x-3 space-y-0"
+                              >
+                                <FormControl>
+                                  <Checkbox
+                                    checked={field.value?.includes(value)}
+                                    onCheckedChange={(checked) => {
+                                      const values = field.value || [];
+                                      return checked
+                                        ? field.onChange([...values, value])
+                                        : field.onChange(
+                                            values.filter((val) => val !== value)
+                                          );
+                                    }}
+                                  />
+                                </FormControl>
+                                <label className="font-normal cursor-pointer">
+                                  {label}
+                                </label>
+                              </FormItem>
+                            );
+                          }}
+                        />
+                      ))}
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
+        );
+      
+      case 'status':
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle>Select Study Status</CardTitle>
+              <CardDescription>
+                Choose the status of clinical trials you want to follow.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <FormField
+                control={form.control}
+                name="status"
+                render={() => (
+                  <FormItem>
+                    <div className="mb-4">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          handleSelectAll(
+                            'status',
+                            Object.entries(statusDisplayMap),
+                            !Object.keys(statusDisplayMap).every((status) =>
+                              form.getValues('status')?.includes(status as StudyStatus)
+                            )
+                          )
+                        }
+                      >
+                        Select All
+                      </Button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      {(Object.entries(statusDisplayMap) as Array<[StudyStatus, string]>).map(([value, label]) => (
+                        <FormField
+                          key={value}
+                          control={form.control}
+                          name="status"
+                          render={({ field }) => {
+                            return (
+                              <FormItem
+                                key={value}
+                                className="flex flex-row items-start space-x-3 space-y-0"
+                              >
+                                <FormControl>
+                                  <Checkbox
+                                    checked={field.value?.includes(value)}
+                                    onCheckedChange={(checked) => {
+                                      const values = field.value || [];
+                                      return checked
+                                        ? field.onChange([...values, value])
+                                        : field.onChange(
+                                            values.filter((val) => val !== value)
+                                          );
+                                    }}
+                                  />
+                                </FormControl>
+                                <label className="font-normal cursor-pointer">
+                                  {label}
+                                </label>
+                              </FormItem>
+                            );
+                          }}
+                        />
+                      ))}
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
+        );
+      
+      case 'therapeuticArea':
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle>Select Therapeutic Areas</CardTitle>
+              <CardDescription>
+                Choose the therapeutic areas you're interested in.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <Search className="w-4 h-4 text-gray-500" />
+                  <Input
+                    type="text"
+                    placeholder="Search therapeutic areas..."
+                    value={therapeuticAreaSearch}
+                    onChange={(e) => setTherapeuticAreaSearch(e.target.value)}
+                    className="flex-1"
+                  />
+                </div>
+
+                <div className="mb-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      handleSelectAll(
+                        'therapeuticArea',
+                        THERAPEUTIC_AREAS,
+                        !THERAPEUTIC_AREAS.every((area) =>
+                          form
+                            .getValues('therapeuticArea')
+                            ?.includes(area.value)
+                        )
+                      )
+                    }
+                  >
+                    Select All
+                  </Button>
+                </div>
+
+                <ScrollArea className="h-[300px] rounded-md border p-4">
+                  <FormField
+                    control={form.control}
+                    name="therapeuticArea"
+                    render={() => (
+                      <FormItem>
+                        <div className="grid grid-cols-2 gap-4">
+                          {filteredTherapeuticAreas.map((area) => (
+                            <FormField
+                              key={area.value}
+                              control={form.control}
+                              name="therapeuticArea"
+                              render={({ field }) => {
+                                return (
+                                  <FormItem
+                                    key={area.value}
+                                    className="flex flex-row items-start space-x-3 space-y-0"
+                                  >
+                                    <FormControl>
+                                      <Checkbox
+                                        checked={field.value?.includes(
+                                          area.value
+                                        )}
+                                        onCheckedChange={(checked) => {
+                                          const values = field.value || [];
+                                          return checked
+                                            ? field.onChange([
+                                                ...values,
+                                                area.value,
+                                              ])
+                                            : field.onChange(
+                                                values.filter(
+                                                  (val) => val !== area.value
+                                                )
+                                              );
+                                        }}
+                                      />
+                                    </FormControl>
+                                    <label className="font-normal cursor-pointer">
+                                      {area.label}
+                                    </label>
+                                  </FormItem>
+                                );
+                              }}
+                            />
+                          ))}
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </ScrollArea>
+                
+                {/* No pill display to avoid issues */}
+              </div>
+            </CardContent>
+          </Card>
+        );
+      
+      default:
+        return null;
+    }
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
+    <Dialog 
+      open={isOpen} 
+      onOpenChange={(open) => {
+        // If we're trying to close the dialog
+        if (!open) {
+          handleClose();
+        }
+      }}
+    >
       <DialogContent 
         className="sm:max-w-[700px] max-h-[90vh] flex flex-col bg-white dark:bg-gray-950"
-        onEscapeKeyDown={(e) => forceOpen && e.preventDefault()} 
-        onPointerDownOutside={(e) => forceOpen && e.preventDefault()}
+        // Always prevent escape key from closing unexpectedly
+        onEscapeKeyDown={(e) => e.preventDefault()}
+        // Always prevent clicks outside from closing unexpectedly 
+        onPointerDownOutside={(e) => e.preventDefault()}
       >
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-purple-600">
@@ -258,276 +575,10 @@ export default function PreferenceModal({
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <ProgressBar currentStep={activeTab} completedSteps={completedSteps} />
+            <ProgressBar currentStep={currentStep} completedSteps={completedSteps} />
             
-            <Tabs value={activeTab} onValueChange={setActiveTab as (value: string) => void} className="w-full">
-              <TabsContent value="phase" className="m-0">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Select Study Phases</CardTitle>
-                    <CardDescription>
-                      Choose the clinical trial phases you're interested in.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <FormField
-                      control={form.control}
-                      name="phase"
-                      render={() => (
-                        <FormItem>
-                          <div className="mb-4">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() =>
-                                handleSelectAll(
-                                  'phase',
-                                  Object.entries(phaseDisplayMap),
-                                  !Object.keys(phaseDisplayMap).every((phase) =>
-                                    form.getValues('phase')?.includes(phase as StudyPhase)
-                                  )
-                                )
-                              }
-                            >
-                              Select All
-                            </Button>
-                          </div>
-                          <div className="grid grid-cols-2 gap-4">
-                            {(Object.entries(phaseDisplayMap) as Array<[StudyPhase, string]>).map(([value, label]) => (
-                              <FormField
-                                key={value}
-                                control={form.control}
-                                name="phase"
-                                render={({ field }) => {
-                                  return (
-                                    <FormItem
-                                      key={value}
-                                      className="flex flex-row items-start space-x-3 space-y-0"
-                                    >
-                                      <FormControl>
-                                        <Checkbox
-                                          checked={field.value?.includes(value)}
-                                          onCheckedChange={(checked) => {
-                                            const values = field.value || [];
-                                            return checked
-                                              ? field.onChange([...values, value])
-                                              : field.onChange(
-                                                  values.filter((val) => val !== value)
-                                                );
-                                          }}
-                                        />
-                                      </FormControl>
-                                      <label className="font-normal cursor-pointer">
-                                        {label}
-                                      </label>
-                                    </FormItem>
-                                  );
-                                }}
-                              />
-                            ))}
-                          </div>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="status" className="m-0">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Select Study Status</CardTitle>
-                    <CardDescription>
-                      Choose the status of clinical trials you want to follow.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <FormField
-                      control={form.control}
-                      name="status"
-                      render={() => (
-                        <FormItem>
-                          <div className="mb-4">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() =>
-                                handleSelectAll(
-                                  'status',
-                                  Object.entries(statusDisplayMap),
-                                  !Object.keys(statusDisplayMap).every((status) =>
-                                    form.getValues('status')?.includes(status as StudyStatus)
-                                  )
-                                )
-                              }
-                            >
-                              Select All
-                            </Button>
-                          </div>
-                          <div className="grid grid-cols-2 gap-4">
-                            {(Object.entries(statusDisplayMap) as Array<[StudyStatus, string]>).map(([value, label]) => (
-                              <FormField
-                                key={value}
-                                control={form.control}
-                                name="status"
-                                render={({ field }) => {
-                                  return (
-                                    <FormItem
-                                      key={value}
-                                      className="flex flex-row items-start space-x-3 space-y-0"
-                                    >
-                                      <FormControl>
-                                        <Checkbox
-                                          checked={field.value?.includes(value)}
-                                          onCheckedChange={(checked) => {
-                                            const values = field.value || [];
-                                            return checked
-                                              ? field.onChange([...values, value])
-                                              : field.onChange(
-                                                  values.filter((val) => val !== value)
-                                                );
-                                          }}
-                                        />
-                                      </FormControl>
-                                      <label className="font-normal cursor-pointer">
-                                        {label}
-                                      </label>
-                                    </FormItem>
-                                  );
-                                }}
-                              />
-                            ))}
-                          </div>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="therapeuticArea" className="m-0">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Select Therapeutic Areas</CardTitle>
-                    <CardDescription>
-                      Choose the therapeutic areas you're interested in.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex items-center space-x-2">
-                        <Search className="w-4 h-4 text-gray-500" />
-                        <Input
-                          type="text"
-                          placeholder="Search therapeutic areas..."
-                          value={therapeuticAreaSearch}
-                          onChange={(e) => setTherapeuticAreaSearch(e.target.value)}
-                          className="flex-1"
-                        />
-                      </div>
-
-                      <div className="mb-4">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            handleSelectAll(
-                              'therapeuticArea',
-                              THERAPEUTIC_AREAS,
-                              !THERAPEUTIC_AREAS.every((area) =>
-                                form
-                                  .getValues('therapeuticArea')
-                                  ?.includes(area.value)
-                              )
-                            )
-                          }
-                        >
-                          Select All
-                        </Button>
-                      </div>
-
-                      <ScrollArea className="h-[300px] rounded-md border p-4">
-                        <FormField
-                          control={form.control}
-                          name="therapeuticArea"
-                          render={() => (
-                            <FormItem>
-                              <div className="grid grid-cols-2 gap-4">
-                                {filteredTherapeuticAreas.map((area) => (
-                                  <FormField
-                                    key={area.value}
-                                    control={form.control}
-                                    name="therapeuticArea"
-                                    render={({ field }) => {
-                                      return (
-                                        <FormItem
-                                          key={area.value}
-                                          className="flex flex-row items-start space-x-3 space-y-0"
-                                        >
-                                          <FormControl>
-                                            <Checkbox
-                                              checked={field.value?.includes(
-                                                area.value
-                                              )}
-                                              onCheckedChange={(checked) => {
-                                                const values = field.value || [];
-                                                return checked
-                                                  ? field.onChange([
-                                                      ...values,
-                                                      area.value,
-                                                    ])
-                                                  : field.onChange(
-                                                      values.filter(
-                                                        (val) => val !== area.value
-                                                      )
-                                                    );
-                                              }}
-                                            />
-                                          </FormControl>
-                                          <label className="font-normal cursor-pointer">
-                                            {area.label}
-                                          </label>
-                                        </FormItem>
-                                      );
-                                    }}
-                                  />
-                                ))}
-                              </div>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </ScrollArea>
-
-                      <div className="flex flex-wrap gap-2 mt-4">
-                        {form.getValues('therapeuticArea')?.map((value) => {
-                          const area = THERAPEUTIC_AREAS.find(
-                            (a) => a.value === value
-                          );
-                          return (
-                            <Badge
-                              key={value}
-                              variant="secondary"
-                              className="cursor-pointer"
-                              onClick={() =>
-                                handleRemoveSelected('therapeuticArea', value)
-                              }
-                            >
-                              {area?.label}
-                            </Badge>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
+            {/* Render current step content */}
+            {renderStepContent()}
 
             <DialogFooter className="flex justify-between items-center">
               <div className="flex gap-2">
@@ -535,7 +586,13 @@ export default function PreferenceModal({
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={handleBack}
+                    onClick={(e) => {
+                      preventCloseRef.current = true;
+                      handleBack(e);
+                      setTimeout(() => {
+                        preventCloseRef.current = false;
+                      }, 300);
+                    }}
                   >
                     Back
                   </Button>
@@ -543,15 +600,21 @@ export default function PreferenceModal({
                 {!isLastStep ? (
                   <Button
                     type="button"
-                    onClick={handleNext}
-                    disabled={!isStepComplete(activeTab)}
+                    onClick={(e) => {
+                      preventCloseRef.current = true;
+                      handleNext(e);
+                      setTimeout(() => {
+                        preventCloseRef.current = false;
+                      }, 300);
+                    }}
+                    disabled={!isStepComplete(currentStep)}
                   >
                     Next
                   </Button>
                 ) : (
                   <Button
                     type="submit"
-                    disabled={!isStepComplete(activeTab)}
+                    disabled={false}
                   >
                     Save Preferences
                   </Button>

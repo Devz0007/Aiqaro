@@ -179,12 +179,12 @@ export default function HomePage(): React.JSX.Element {
               <div className="flex items-center mb-2">
                 <div className="p-2 rounded-full bg-primary/10 mr-3">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
                 </div>
-                <h3 className="font-semibold">AI-Powered News Updates</h3>
+                <h3 className="font-semibold">Cut Response Time in Half</h3>
               </div>
-              <p className="text-sm">Stay informed with AI-curated news on trials relevant to your site's interests and specialties</p>
+              <p className="text-sm">Connect directly with trial sponsors and save your preferences for faster matching</p>
             </div>
             
             <div className="bg-background/30 backdrop-blur-sm p-4 rounded-xl border border-accent/20 shadow-sm hover:shadow-md transition-all">
@@ -216,6 +216,70 @@ export default function HomePage(): React.JSX.Element {
           
           {/* Auto-rotating carousel implementation */}
           <FeatureCarousel />
+        </div>
+      </section>
+
+      <section className="pt-12 pb-12">
+        <div 
+          className="container max-w-screen-xl mx-auto px-8"
+          ref={dashboardRef}
+        >
+          <h2 className="text-4xl text-center font-semibold mb-8">
+            Your Aiqaro Dashboard at a Glance
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Preferences Screenshot - Now First */}
+            <div 
+              className="text-center relative group flex flex-col items-center"
+              style={{
+                transform: `translateX(${Math.min(0, (scrollY - 400) * 0.2)}px)`,
+                opacity: Math.min(1, Math.max(0, (scrollY - 350) / 250))
+              }}
+            >
+              <div className="relative w-full aspect-[16/10] flex items-center justify-center bg-background rounded-lg overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-accent/5 transform group-hover:scale-[1.02] transition-transform duration-300" />
+                <Image
+                  src="/SavePrefScreen.png?v=2"
+                  alt="Study Preferences - Customize your preferences for relevant clinical trials"
+                  className="w-[98%] h-[98%] object-contain transform group-hover:scale-[1.02] transition-transform duration-300"
+                  width={1920}
+                  height={1080}
+                  priority
+                />
+              </div>
+              <div className="mt-6 text-center w-full">
+                <p className="text-lg font-medium text-foreground">
+                  Streamline your site's trial selection with smart preferences
+                </p>
+              </div>
+            </div>
+
+            {/* Dashboard Screenshot - Now Second */}
+            <div 
+              className="text-center relative group flex flex-col items-center"
+              style={{
+                transform: `translateX(${Math.max(0, (scrollY - 400) * -0.2)}px)`,
+                opacity: Math.min(1, Math.max(0, (scrollY - 350) / 250))
+              }}
+            >
+              <div className="relative w-full aspect-[16/10] flex items-center justify-center bg-background rounded-lg overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-accent/5 transform group-hover:scale-[1.02] transition-transform duration-300" />
+                <Image
+                  src="/DashboardScreen.png?v=2"
+                  alt="Clinical Trials Dashboard - Filter and search through thousands of trials"
+                  className="w-[98%] h-[98%] object-contain transform group-hover:scale-[1.02] transition-transform duration-300"
+                  width={1920}
+                  height={1080}
+                  priority
+                />
+              </div>
+              <div className="mt-6 text-center w-full">
+                <p className="text-lg font-medium text-foreground">
+                  AI driven Intelligent trial matching
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
       <section 
