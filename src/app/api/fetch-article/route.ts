@@ -22,37 +22,123 @@ export async function POST(req: Request) {
                            url.includes('european-pharmaceutical-review');
     const isDrugsCom = url.includes('drugs.com') || url.includes('healthday.com');
     
-    // Fetch the article HTML
-    const response = await fetch(url, {
+    // Initialize html variable to store the fetched content
+    let html = '';
+    
+    // Add a random delay (0.5-3 seconds) for Drugs.com to appear more human-like
+    if (isDrugsCom) {
+      const randomDelay = Math.floor(Math.random() * 2500) + 500;
+      await new Promise(resolve => setTimeout(resolve, randomDelay));
+    }
+    
+    // Determine if we should use a proxy for Drugs.com requests
+    const shouldUseProxy = isDrugsCom;
+    
+    // Set up fetch options with appropriate headers to mimic a real browser
+    let fetchOptions: RequestInit = {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.9',
+        'Referer': 'https://www.google.com/',
         'Cache-Control': 'no-cache',
         'Pragma': 'no-cache',
-        'sec-ch-ua': '"Not A(Brand";v="99", "Google Chrome";v="121", "Chromium";v="121"',
+        'sec-ch-ua': '"Chromium";v="122", "Not(A:Brand";v="24", "Google Chrome";v="122"',
         'sec-ch-ua-mobile': '?0',
-        'sec-ch-ua-platform': '"macOS"',
+        'sec-ch-ua-platform': '"Windows"',
         'Sec-Fetch-Dest': 'document',
         'Sec-Fetch-Mode': 'navigate',
-        'Sec-Fetch-Site': 'none',
+        'Sec-Fetch-Site': 'cross-site',
         'Sec-Fetch-User': '?1',
-        'Upgrade-Insecure-Requests': '1'
+        'Upgrade-Insecure-Requests': '1',
+        'Connection': 'keep-alive',
+        'dnt': '1'
       },
-      redirect: 'follow'
-    });
+      redirect: 'follow' as RequestRedirect
+    };
     
-    if (!response.ok) {
+    let response;
+    
+    try {
+      // For Drugs.com, first try using an open proxy service
+      if (shouldUseProxy) {
+        console.log("Using alternative method to fetch Drugs.com content");
+        
+        try {
+          // First approach: Try using a free web proxy service
+          response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`, {
+            headers: { 'Origin': 'https://trialbridge.ai' }
+          });
+          
+          if (response.ok) {
+            const proxyData = await response.json();
+            if (proxyData && proxyData.contents) {
+              html = proxyData.contents;
+              console.log("Successfully retrieved content via AllOrigins proxy");
+              
+              // Continue directly to processing without another fetch
+              const $ = cheerio.load(html);
+              // The rest of the processing will happen with this content
+            } else {
+              console.log("AllOrigins response was not in expected format, falling back to direct fetch");
+              // Will fall through to direct fetch below
+            }
+          } else {
+            console.log(`AllOrigins proxy request failed with status ${response.status}, falling back to direct fetch`);
+            // Will fall through to direct fetch below
+          }
+        } catch (proxyError) {
+          console.error("Error using proxy service:", proxyError);
+          console.log("Falling back to direct fetch approach");
+          // Will fall through to direct fetch below
+        }
+      }
+      
+      // If we don't have HTML content yet (either proxy not used or failed), try direct fetch
+      if (!html) {
+        response = await fetch(url, fetchOptions);
+        
+        if (!response.ok) {
+          console.log(`Direct fetch failed with status ${response.status}`);
+          
+          // If direct fetch fails, try using Googlebot UA as a last resort
+          if (response.status === 403 || response.status === 429) {
+            console.log("Retrying with Googlebot user agent");
+            const googleBotOptions = {
+              ...fetchOptions,
+              headers: {
+                ...fetchOptions.headers,
+                'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'
+              }
+            };
+            
+            response = await fetch(url, googleBotOptions);
+          }
+        }
+        
+        if (!response.ok) {
+          return NextResponse.json(
+            { 
+              error: `Failed to fetch article: ${response.status}`,
+              fullContent: false 
+            },
+            { status: response.status }
+          );
+        }
+        
+        html = await response.text();
+      }
+    } catch (fetchError) {
+      console.error("Error fetching article:", fetchError);
       return NextResponse.json(
         { 
-          error: `Failed to fetch article: ${response.status}`,
+          error: `Failed to fetch article: ${fetchError instanceof Error ? fetchError.message : String(fetchError)}`,
           fullContent: false 
         },
-        { status: response.status }
+        { status: 500 }
       );
     }
     
-    const html = await response.text();
     let mainContent = '';
     let mainTitle = '';
     let mainByline = '';
