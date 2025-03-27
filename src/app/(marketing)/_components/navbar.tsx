@@ -1,3 +1,5 @@
+"use client";
+
 import {
   SignedIn,
   SignedOut,
@@ -6,6 +8,8 @@ import {
 } from '@clerk/nextjs';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 
 import { BrandLogo } from '@/components/common/brand-logo';
 import { Button } from '@/components/ui/button';
@@ -19,6 +23,14 @@ import {
 } from '@/components/ui/drawer';
 
 export function NavBar(): React.JSX.Element {
+  const [isOpen, setIsOpen] = useState(false);
+  const router = useRouter();
+  
+  const handleLinkClick = (href: string) => {
+    setIsOpen(false);
+    router.push(href);
+  };
+
   return (
     <div className="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-sm shadow-md">
       <nav className="flex items-center justify-between py-6 px-4 md:px-8 container">
@@ -60,7 +72,7 @@ export function NavBar(): React.JSX.Element {
 
         {/* Mobile Menu Button */}
         <div className="md:hidden">
-          <Drawer>
+          <Drawer open={isOpen} onOpenChange={setIsOpen}>
             <DrawerTrigger asChild>
               <button
                 type="button"
@@ -87,19 +99,31 @@ export function NavBar(): React.JSX.Element {
                 </DrawerClose>
               </DrawerHeader>
               <div className="mt-6 flex flex-col gap-4 px-4 py-4 font-semibold">
-                <Link className="text-lg" href="/#features">
+                <button 
+                  className="text-lg text-left" 
+                  onClick={() => handleLinkClick('/#features')}
+                >
                   Features
-                </Link>
-                <Link className="text-lg" href="/#pricing">
+                </button>
+                <button 
+                  className="text-lg text-left" 
+                  onClick={() => handleLinkClick('/#pricing')}
+                >
                   Pricing
-                </Link>
-                <Link className="text-lg" href="/about-us">
+                </button>
+                <button 
+                  className="text-lg text-left" 
+                  onClick={() => handleLinkClick('/about-us')}
+                >
                   About
-                </Link>
+                </button>
                 <SignedIn>
-                  <Link className="text-lg" href="/dashboard/studies">
+                  <button 
+                    className="text-lg text-left" 
+                    onClick={() => handleLinkClick('/dashboard/studies')}
+                  >
                     Dashboard
-                  </Link>
+                  </button>
                   {/* Sign Out Button for mobile */}
                   <SignOutButton>
                     <Button variant="ghost" className="text-lg">
