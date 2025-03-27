@@ -19,7 +19,7 @@ const FeatureCarousel = () => {
     {
       title: "AI-Curated News Feed",
       description: "Stay informed with the latest news on clinical trials tailored to your interests and specialties",
-      image: "/News.PNG",
+      image: "/News.png",
       color: "from-emerald-500/20 to-teal-500/20"
     },
     {
