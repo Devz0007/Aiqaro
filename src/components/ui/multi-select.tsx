@@ -72,6 +72,44 @@ const mobileBadgeVariants = cva(
   }
 );
 
+// Add responsive styles for mobile devices
+const responsiveBadgeStyles = cn(
+  'py-0.5 px-1.5 text-[10px] rounded-full flex items-center gap-0.5',
+  'md:py-1 md:px-2 md:text-xs md:gap-1'
+);
+
+// Add minimal mobile-specific styles
+const mobileStyles = `
+@media (max-width: 480px) {
+  /* Shrink badge text for better mobile display */
+  .badge {
+    font-size: 0.65rem !important;
+    padding: 0.1rem 0.3rem !important;
+    max-width: 8rem !important;
+  }
+  
+  /* Help truncate badge text */
+  .badge-content {
+    max-width: 5rem !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: inline-block;
+  }
+  
+  /* Make close buttons smaller on mobile */
+  .badge-close {
+    padding: 0 !important; 
+    margin-left: 0.2rem !important;
+  }
+  
+  /* Smaller badge icons */
+  .badge-icon {
+    width: 0.7rem !important;
+    height: 0.7rem !important;
+  }
+}`;
+
 /**
  * Props for MultiSelect component
  */
@@ -163,6 +201,24 @@ export const MultiSelect = React.forwardRef<
     const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
     const [isAnimating, setIsAnimating] = React.useState(false);
 
+    // Add the styles to the DOM once during component mounting
+    React.useEffect(() => {
+      const styleId = 'multi-select-mobile-styles';
+      if (!document.getElementById(styleId)) {
+        const styleSheet = document.createElement('style');
+        styleSheet.id = styleId;
+        styleSheet.innerHTML = mobileStyles;
+        document.head.appendChild(styleSheet);
+      }
+      
+      return () => {
+        const styleSheet = document.getElementById(styleId);
+        if (styleSheet) {
+          document.head.removeChild(styleSheet);
+        }
+      };
+    }, []);
+
     const handleInputKeyDown = (
       event: React.KeyboardEvent<HTMLInputElement>
     ) => {
@@ -221,13 +277,14 @@ export const MultiSelect = React.forwardRef<
             {...props}
             onClick={handleTogglePopover}
             className={cn(
-              'flex w-full p-1 rounded-md border min-h-10 h-auto items-center justify-between bg-inherit hover:bg-inherit [&_svg]:pointer-events-auto',
+              'flex w-full rounded-md border min-h-10 h-auto items-center justify-between bg-inherit hover:bg-inherit [&_svg]:pointer-events-auto',
+              'p-1', // Default padding for desktop
               className
             )}
           >
             {selectedValues.length > 0 ? (
               <div className="flex justify-between items-center w-full">
-                <div className="flex flex-wrap items-center gap-1 pr-8">
+                <div className="flex flex-wrap items-center gap-1 pr-8 max-w-[calc(100%-40px)]">
                   {selectedValues.slice(0, maxCount).map((value) => {
                     const option = options.find((o) => o.value === value);
                     const IconComponent = option?.icon;
@@ -235,22 +292,22 @@ export const MultiSelect = React.forwardRef<
                       <Badge
                         key={value}
                         className={cn(
+                          'py-1 px-2 rounded-full flex items-center gap-1 badge',
                           isAnimating ? 'animate-bounce' : '',
-                          'py-1 px-2 text-xs md:text-sm rounded-full flex items-center gap-1',
-                          mobileBadgeVariants({ variant })
+                          multiSelectVariants({ variant })
                         )}
                         style={{ animationDuration: `${animation}s` }}
                       >
                         {IconComponent && (
-                          <IconComponent className="h-3 w-3 mr-1" />
+                          <IconComponent className="h-3 w-3 mr-1 badge-icon" />
                         )}
-                        <span className="truncate max-w-[100px] md:max-w-full">
+                        <span className="truncate max-w-[100px] badge-content">
                           {option?.label}
                         </span>
                         <div
                           role="button"
                           tabIndex={0}
-                          className="size-5 md:size-4 flex items-center justify-center rounded-full hover:bg-background/20 cursor-pointer"
+                          className="size-4 flex items-center justify-center rounded-full hover:bg-background/20 cursor-pointer badge-close"
                           onClick={(event) => {
                             event.stopPropagation();
                             toggleOption(value);
@@ -263,7 +320,7 @@ export const MultiSelect = React.forwardRef<
                             }
                           }}
                         >
-                          <XIcon className="h-3 w-3" />
+                          <XIcon className="h-3 w-3 badge-icon" />
                         </div>
                       </Badge>
                     );
@@ -271,17 +328,17 @@ export const MultiSelect = React.forwardRef<
                   {selectedValues.length > maxCount && (
                     <Badge
                       className={cn(
-                        'bg-transparent text-foreground border-foreground/1 hover:bg-transparent',
+                        'bg-transparent text-foreground border-foreground/1 hover:bg-transparent badge',
                         isAnimating ? 'animate-bounce' : '',
                         multiSelectVariants({ variant })
                       )}
                       style={{ animationDuration: `${animation}s` }}
                     >
-                      <span>{`+ ${selectedValues.length - maxCount} more`}</span>
+                      <span>{`+${selectedValues.length - maxCount}`}</span>
                       <div
                         role="button"
                         tabIndex={0}
-                        className="ml-2 flex items-center justify-center cursor-pointer"
+                        className="ml-1 flex items-center justify-center cursor-pointer badge-close"
                         onClick={(event) => {
                           event.stopPropagation();
                           clearExtraOptions();
@@ -294,12 +351,12 @@ export const MultiSelect = React.forwardRef<
                           }
                         }}
                       >
-                        <XCircle className="h-4 w-4" />
+                        <XCircle className="h-3 w-3 badge-icon" />
                       </div>
                     </Badge>
                   )}
                 </div>
-                <div className="flex items-center justify-between min-w-[60px] absolute right-0 top-0 bottom-0">
+                <div className="flex items-center justify-between w-[40px] absolute right-0 top-0 bottom-0">
                   <div
                     role="button"
                     tabIndex={0}
@@ -316,21 +373,21 @@ export const MultiSelect = React.forwardRef<
                       }
                     }}
                   >
-                    <XIcon className="h-4 w-4" />
+                    <XIcon className="h-4 w-4 badge-icon" />
                   </div>
                   <Separator
                     orientation="vertical"
                     className="flex min-h-6 h-full"
                   />
-                  <ChevronDown className="h-4 mx-1.5 cursor-pointer text-muted-foreground" />
+                  <ChevronDown className="h-4 w-4 cursor-pointer text-muted-foreground mr-1.5 badge-icon" />
                 </div>
               </div>
             ) : (
               <div className="flex items-center justify-between w-full mx-auto">
-                <span className="text-sm text-muted-foreground mx-3">
+                <span className="text-sm text-muted-foreground mx-3 truncate">
                   {placeholder}
                 </span>
-                <ChevronDown className="h-4 cursor-pointer text-muted-foreground mx-2" />
+                <ChevronDown className="h-4 w-4 cursor-pointer text-muted-foreground mx-2 badge-icon" />
               </div>
             )}
           </Button>
