@@ -17,6 +17,7 @@ import {
   calculateNewsRelevanceScore,
   StudyPreferences
 } from '@/lib/services/user-preferences-service';
+import { ArticleModal } from '@/components/news/article-modal';
 
 const sourceLabels: Record<NewsSource, { label: string, color: string, lightColor: string }> = {
   FDA: { label: 'FDA', color: 'bg-blue-200 text-blue-800 hover:bg-blue-300', lightColor: 'bg-blue-50 text-blue-700 hover:bg-blue-100' },
@@ -344,6 +345,8 @@ export default function NewsPage() {
   const [aiRecommendationsActive, setAiRecommendationsActive] = useState(false);
   const [tagGroups, setTagGroups] = useState<Record<string, string[]>>({});
   const [highlyRecommendedThreshold, setHighlyRecommendedThreshold] = useState<number>(65);
+  const [selectedArticle, setSelectedArticle] = useState<NewsItem | null>(null);
+  const [isArticleModalOpen, setIsArticleModalOpen] = useState(false);
 
   // Fetch user preferences
   useEffect(() => {
@@ -722,6 +725,15 @@ export default function NewsPage() {
     );
   };
 
+  const handleReadMoreClick = (item: NewsItem) => {
+    setSelectedArticle(item);
+    setIsArticleModalOpen(true);
+  };
+  
+  const handleCloseArticleModal = () => {
+    setIsArticleModalOpen(false);
+  };
+
   return (
     <div className="container mx-auto py-8 space-y-6">
       <div className="flex items-center justify-between mb-6">
@@ -962,11 +974,19 @@ export default function NewsPage() {
                 relevanceScore={newsScores.get(item.id) || 0}
                 showAiScore={aiRecommendationsActive}
                 highlyRecommendedThreshold={highlyRecommendedThreshold}
+                onReadMoreClick={handleReadMoreClick}
               />
             ))}
           </div>
         </>
       )}
+      
+      {/* Article Modal */}
+      <ArticleModal
+        isOpen={isArticleModalOpen}
+        onClose={handleCloseArticleModal}
+        newsItem={selectedArticle}
+      />
     </div>
   );
 } 

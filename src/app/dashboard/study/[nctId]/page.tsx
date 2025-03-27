@@ -1,6 +1,7 @@
 // src/app/study/[nctId]/page.tsx
-import { Calendar, Building2, MapPin, Activity } from 'lucide-react';
+import { Calendar, Building2, MapPin, Activity, Mail, Phone, Users } from 'lucide-react';
 import { Metadata } from 'next';
+import Link from 'next/link';
 import React, { Suspense } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 
@@ -11,6 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 import { api } from '@/lib/api/clinical-trials';
 
 import { BackButton } from './components/back-button';
@@ -63,6 +65,7 @@ async function StudyDetailsContent({
 
     const briefTitle =
       identificationModule?.briefTitle ?? 'Title not available';
+    const officialTitle = identificationModule?.officialTitle;
     const phase = designModule?.phases?.[0] ?? 'Phase not specified';
     const status = statusModule?.overallStatus ?? 'Status not specified';
     const sponsor =
@@ -75,13 +78,40 @@ async function StudyDetailsContent({
     const hasDetailedDescription =
       typeof descriptionModule?.detailedDescription === 'string' &&
       descriptionModule.detailedDescription.length > 0;
+    
+    // Extract locations information
+    const locations = contactsLocationsModule?.locations ?? [];
+    const enrollmentCount = designModule?.enrollmentInfo?.count ?? 0;
+
+    // Extract contact information
+    const centralContacts = contactsLocationsModule?.centralContacts || [];
+    const contactEmail = centralContacts[0]?.email;
+    const contactPhone = centralContacts[0]?.phone;
+    const contactName = centralContacts[0]?.name;
+    const hasContactInfo = contactEmail || contactPhone;
+    
+    // Create clinic trial URL
+    const studyUrl = `https://clinicaltrials.gov/study/${nctId}`;
 
     return (
       <Card>
         <CardHeader>
           <div className="space-y-2">
             <CardTitle className="text-2xl">{briefTitle}</CardTitle>
-            <CardDescription>NCT ID: {nctId}</CardDescription>
+            {officialTitle && (
+              <CardDescription className="text-sm">{officialTitle}</CardDescription>
+            )}
+            <div className="flex items-center gap-2 pt-1">
+              <CardDescription className="text-sm">NCT ID: {nctId}</CardDescription>
+              <Link 
+                href={studyUrl}
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
+              >
+                View on ClinicalTrials.gov
+              </Link>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -103,7 +133,53 @@ async function StudyDetailsContent({
               <span className="text-sm">{location}</span>
             </div>
           </div>
+          
+          {/* Additional enrollment info */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm">
+                <span className="font-medium">Enrollment:</span> {enrollmentCount} participants • {locations.length} sites
+              </span>
+            </div>
+          </div>
+          
+          {/* Contact information section */}
+          {hasContactInfo && (
+            <div className="space-y-3 pt-1 border-t">
+              <h3 className="text-base font-medium pt-2">Contact Information</h3>
+              <div className="flex flex-wrap gap-3">
+                {contactName && (
+                  <div className="text-sm">
+                    <span className="font-medium">Contact:</span> {contactName}
+                  </div>
+                )}
+                {contactEmail && (
+                  <a 
+                    href={`mailto:${contactEmail}`}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-700 hover:text-blue-800 transition-colors duration-200 hover:shadow-sm"
+                    title="Send email"
+                  >
+                    <Mail className="w-4 h-4" />
+                    <span className="text-sm">{contactEmail}</span>
+                  </a>
+                )}
+                {contactPhone && (
+                  <a 
+                    href={`tel:${contactPhone}`}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-green-50 hover:bg-green-100 text-green-700 hover:text-green-800 transition-colors duration-200 hover:shadow-sm"
+                    title="Call phone number"
+                  >
+                    <Phone className="w-4 h-4" />
+                    <span className="text-sm">{contactPhone}</span>
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
 
+          <Separator />
+          
           <div className="space-y-4">
             <h3 className="text-lg font-medium">Brief Summary</h3>
             <p className="text-sm text-muted-foreground whitespace-pre-wrap">

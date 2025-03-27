@@ -2,7 +2,7 @@
 'use client';
 
 import { useUser } from '@clerk/nextjs';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import Loader from '@/components/common/loader';
@@ -17,6 +17,8 @@ const DashboardLayout = ({
 }): React.JSX.Element => {
   const { isLoaded, isSignedIn, user } = useUser();
   const router = useRouter();
+  // Use client-side only state to avoid hydration mismatch
+  const [isMounted, setIsMounted] = useState(false);
 
   // Add debug logging for user authentication
   useEffect(() => {
@@ -29,6 +31,11 @@ const DashboardLayout = ({
     }
   }, [isLoaded, isSignedIn, user]);
 
+  // Set mounted state after hydration
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   // Wait for user to be loaded and redirect if not signed in
   useEffect(() => {
     if (isLoaded && !isSignedIn) {
@@ -36,6 +43,16 @@ const DashboardLayout = ({
       router.push('/');
     }
   }, [isLoaded, isSignedIn, router]);
+
+  // Show a consistent initial UI for both server and client render
+  // Only reveal conditional UI after client-side hydration is complete
+  if (!isMounted) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <Loader />
+      </div>
+    );
+  }
 
   // Show loader while user is loading
   if (!isLoaded || !isSignedIn) {

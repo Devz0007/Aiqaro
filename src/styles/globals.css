@@ -1,0 +1,8 @@
+/* Add styles for TrialSite News iframe fallback */
+.trialsite-iframe-container:hover .iframe-fallback {
+  opacity: 1;
+}
+
+.iframe-fallback {
+  transition: opacity 0.3s ease;
+} 

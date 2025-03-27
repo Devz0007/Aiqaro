@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { format } from 'date-fns';
 import { ExternalLink, Activity, Pill, Stethoscope, Microscope, Calendar, TestTube, Globe } from 'lucide-react';
 import { NewsItem } from '@/types/news';
@@ -34,9 +34,19 @@ interface NewsCardProps {
   relevanceScore?: number;
   showAiScore?: boolean;
   highlyRecommendedThreshold?: number;
+  onReadMoreClick?: (item: NewsItem) => void;
 }
 
-export function NewsCard({ item, onTagClick, onCategoryClick, onSourceClick, relevanceScore, showAiScore = false, highlyRecommendedThreshold = 65 }: NewsCardProps) {
+export function NewsCard({ 
+  item, 
+  onTagClick, 
+  onCategoryClick, 
+  onSourceClick, 
+  relevanceScore, 
+  showAiScore = false, 
+  highlyRecommendedThreshold = 65,
+  onReadMoreClick 
+}: NewsCardProps) {
   // Using the prop directly instead of accessing window global
   
   // Validate and format the publish date
@@ -155,7 +165,7 @@ export function NewsCard({ item, onTagClick, onCategoryClick, onSourceClick, rel
           variant="ghost"
           size="sm"
           className="p-0 h-7"
-          onClick={() => window.open(item.url, '_blank')}
+          onClick={() => onReadMoreClick ? onReadMoreClick(item) : window.open(item.url, '_blank')}
         >
           <ExternalLink className="h-4 w-4 text-gray-500 hover:text-gray-700" />
         </Button>

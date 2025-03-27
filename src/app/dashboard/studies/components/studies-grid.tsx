@@ -23,7 +23,7 @@ export default function StudiesGrid({
   const router = useRouter();
 
   const handleViewDetails = (nctId: string): void => {
-    router.push(`/dashboard/studies/${nctId}`);
+    router.push(`/dashboard/study/${nctId}`);
   };
 
   return (
